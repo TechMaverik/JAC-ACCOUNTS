@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JAC Accounts - All transactions</title>
+<style>
+    body { background: #18181b; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+    .sidebar {
+        width: 270px; background: #22223a; height: 100vh; float: left; padding: 10px 0 0 0; box-sizing: border-box;
+        position: fixed; left: 0; top: 0; bottom: 0;
+    }
+    .sidebar .title { margin-left: 30px; font-size: 26px; font-weight: bold;}
+    .sidebar .menu { margin-top: 18px; }
+    .sidebar .menu a { display: block; color: #bbb; text-decoration: none; font-size: 17px; padding: 7px 30px;}
+    .sidebar .balance { margin: 30px 30px 10px 30px; font-size: 19px; color: #c2f262; }
+    .sidebar .accounts { margin: 12px 13px 0px 13px; }
+    .sidebar .account { display: flex; align-items: center; justify-content: space-between; background: #2f304a; border-radius: 9px; padding: 7px 10px; margin-bottom: 7px;}
+    .sidebar .account-icon { width: 22px; height: 22px; background:#bb61fa; border-radius: 4px; display:inline-flex; align-items:center; justify-content:center; margin-right:7px;}
+    .sidebar .account-balance { font-size: 15px; color: #f0f0f0;}
+    .content { margin-left: 290px; padding: 0;}
+    .content .header { display: flex; padding: 16px 20px; background: #232326; align-items: center;}
+    .content .title { font-size: 22px; font-weight: bold; color: #fff; }
+    .trans-list { margin: 0 28px; margin-top: 16px;}
+    .section-date { font-size: 14px; color: #aac; margin: 24px 0 6px 0;}
+    .trans { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #24243a;}
+    .trans .left { display: flex; align-items: center;}
+    .trans .icon { width: 34px; height: 34px; border-radius: 11px; background: #39395a; display: flex; align-items:center; justify-content:center; font-size: 21px; margin-right: 17px;}
+    .trans .desc { font-size: 16px; color: #fff;}
+    .trans .amt { color: #ff6868; font-weight: bold; font-size: 15px;}
+    .add-bar { position: fixed; bottom: 12px; left: 0; width: 100vw; display: flex; justify-content: flex-end; margin-left: 280px;}
+    .add-btn { background: #1781ff; color: #fff; padding: 10px 28px; margin-right: 24px; border-radius: 28px; font-size:16px; border: none;}
+</style>
+</head>
+<body>
+<div class="sidebar">
+    <div class="title">JAC Accounts</div>
+    <div class="menu">
+        <!-- <a href="#">Export Data</a>
+        <a href="#">Analytics</a> -->
+        <a href="/account">Bank Account</a>
+        <a href="#" style="color:#c2f262;">Balance <span style="font-size:15px;">₹0</span></a>
+        <a href="/transaction/expense">Add transactions</a>
+    </div>
+    <div class="accounts">
+        <!-- <div class="account"><span><span class="account-icon">&#128179;</span> HDFC MAIN CARD </span> <span class="account-balance">₹4,594.49</span></div>
+        <div class="account"><span><span class="account-icon" style="background:#5af284;">&#128179;</span> HDFC Joint Account </span> <span class="account-balance">₹0</span></div>
+        <div class="account"><span><span class="account-icon" style="background:#a03cf2;">&#128179;</span> IOB Bank </span> <span class="account-balance">₹0</span></div>
+        <div class="account"><span><span class="account-icon" style="background:#584ef9;">&#128179;</span> Federal Bank </span> <span class="account-balance">₹554.54</span></div>
+        <div class="account"><span><span class="account-icon" style="background:#7af151;">&#128179;</span> Investment </span> <span class="account-balance">₹1,000</span></div> -->
+    </div>
+</div>
+<div class="content">
+    <div class="header">
+        <div class="title">All transactions</div>
+    </div>
+    <div class="trans-list">
+        <div class="section-date">Fri, 17 Oct</div>
+        <div class="trans"><div class="left"><div class="icon" style="background:#bb61fa;">🍽️</div><div><span class="desc">Zomato</span><br><span style="color:#aaa;font-size:13px;">IOB Bank 22:28</span></div></div> <span class="amt">-₹1,673</span></div>
+        <!-- 
+        
+        <div class="trans"><div class="left"><div class="icon" style="background:#fca557;">🛍️</div><div><span class="desc">Shopping</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:27</span></div></div> <span class="amt">-₹700</span></div>
+        <div class="trans"><div class="left"><div class="icon" style="background:#71a5fa;">🍱</div><div><span class="desc">Food</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:27</span></div></div> <span class="amt">-₹607</span></div>
+        <div class="trans"><div class="left"><div class="icon" style="background:#71a5fa;">🍱</div><div><span class="desc">Food</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:25</span></div></div> <span class="amt">-₹15</span></div>
+        <div class="trans"><div class="left"><div class="icon" style="background:#fcba61;">🚗</div><div><span class="desc">Transport</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:26</span></div></div> <span class="amt">-₹54</span></div>
+        <div class="trans"><div class="left"><div class="icon" style="background:#71a5fa;">🍱</div><div><span class="desc">Food</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:25</span></div></div> <span class="amt">-₹297</span></div> -->
+
+        </div>
+</div>
+<div class="add-bar"><button class="add-btn">+ Add transaction</button></div>
+</body>
+</html>

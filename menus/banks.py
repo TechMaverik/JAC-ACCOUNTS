@@ -1,0 +1,6 @@
+banks = [
+    "HDFC BANK MAIN",
+    "HDFC BANK JOINT ACCOUNT",
+    "FEDERAL BANK",
+    "INDIAN OVERSEAS BANK",
+]
