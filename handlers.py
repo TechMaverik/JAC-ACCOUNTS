@@ -17,5 +17,10 @@ class Handlers:
         response = self.service.process_account_entry(data)
         return response
 
-    def handle_transaction_entry(self):
-        pass
+    def delete_all_entries(self):
+        response = self.service.delete_all_entries()
+        return response
+
+    def fetch_all_accounts(self):
+        accounts = self.service.get_all_accounts()
+        return accounts

@@ -38,15 +38,14 @@
         <!-- <a href="#">Export Data</a>
         <a href="#">Analytics</a> -->
         <a href="/account">Bank Account</a>
-        <a href="#" style="color:#c2f262;">Balance <span style="font-size:15px;">₹0</span></a>
+        <a href="/" style="color:#c2f262;">Balance <span style="font-size:15px;">₹{{ current_balance }}</span></a>
         <a href="/transaction/expense">Add transactions</a>
+        <a href="/settings">Settings</a>
     </div>
     <div class="accounts">
-        <!-- <div class="account"><span><span class="account-icon">&#128179;</span> HDFC MAIN CARD </span> <span class="account-balance">₹4,594.49</span></div>
-        <div class="account"><span><span class="account-icon" style="background:#5af284;">&#128179;</span> HDFC Joint Account </span> <span class="account-balance">₹0</span></div>
-        <div class="account"><span><span class="account-icon" style="background:#a03cf2;">&#128179;</span> IOB Bank </span> <span class="account-balance">₹0</span></div>
-        <div class="account"><span><span class="account-icon" style="background:#584ef9;">&#128179;</span> Federal Bank </span> <span class="account-balance">₹554.54</span></div>
-        <div class="account"><span><span class="account-icon" style="background:#7af151;">&#128179;</span> Investment </span> <span class="account-balance">₹1,000</span></div> -->
+        {% for account in accounts %}
+        <div class="account"><span><span class="account-icon">&#128179;</span> {{ account[1] }} </span> <span class="account-balance">₹{{ account[2] }}</span></div>
+        {% endfor %}
     </div>
 </div>
 <div class="content">

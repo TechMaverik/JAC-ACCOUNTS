@@ -12,7 +12,13 @@ class Service:
 
     def process_account_entry(self, data):
         print(data)
-        return True
+        status = self.mapper.insert_to_bankers(data)
+        return status
 
-    def process_transaction_entry(self, data):
-        pass
+    def get_all_accounts(self):
+        accounts = self.mapper.select_accounts()
+        return accounts
+
+    def delete_all_entries(self):
+        status = self.mapper.delete_all_entries()
+        return status

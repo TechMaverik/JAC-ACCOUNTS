@@ -24,25 +24,13 @@
 </style>
 </head>
 <body>
-    <form method="POST" action="/account/entry">
+    <form method="POST" action="/settings/delete">
         <div class="header">
             <button class="btn btn-link p-0" onclick="window.location.href='/'">Cancel</button>
-            <span class="title">New account</span>
-            <button type="submit">Done</button>
+            <span class="title">DELETE ALL ENTRIES</span>
+            <button type="submit">Proceed</button>
         </div>
-        <div class="section">
-            <div class="account-icon">
-                <span>&#128179;</span>
-            </div>
-            <span class="label">Account Name</span>
-            <input class="input" placeholder="Account name" name="name" required>
-        
-            <span class="label">Start Balance</span>
-            <input class="input" placeholder="Balance" name="balance" required>
-
-            <small style="color:#bdbdbd;">You can set start balance.<br>It's a balance you started tracking from.</small>
-        
-        </div>
+      
     </form>
 </body>
 </html>

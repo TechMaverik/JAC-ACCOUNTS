@@ -25,7 +25,7 @@ class Mapper:
     def insert_to_bankers(self, data):
 
         self.cursor.execute(
-            "INSERT INTO bankers (name, balance) VALUES (?, ?)",
+            "INSERT INTO banker (account_name, balance) VALUES (?, ?)",
             data,
         )
         self.conn.commit()
@@ -68,6 +68,24 @@ class Mapper:
             'INSERT INTO investment (amount, "from", category, date) VALUES (?, ?, ?, ?)',
             data,
         )
+        self.conn.commit()
+        self.conn.close()
+        return True
+
+    def select_accounts(self):
+
+        self.cursor.execute("SELECT * FROM banker")
+        accounts = self.cursor.fetchall()
+        self.conn.close()
+        return accounts
+
+    def delete_all_entries(self):
+
+        self.cursor.execute("DELETE FROM banker")
+        self.cursor.execute("DELETE FROM expense")
+        self.cursor.execute("DELETE FROM income")
+        self.cursor.execute("DELETE FROM transfer")
+        self.cursor.execute("DELETE FROM investment")
         self.conn.commit()
         self.conn.close()
         return True
