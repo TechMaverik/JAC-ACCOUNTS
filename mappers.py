@@ -18,7 +18,7 @@ class Mapper:
             self.cursor.execute(query_collection.CREATE_TRANSFER)
             self.cursor.execute(query_collection.CREATE_INVESTMENT)
             self.conn.commit()
-            self.conn.close()
+
         except:
             pass
 

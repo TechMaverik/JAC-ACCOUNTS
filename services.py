@@ -22,3 +22,15 @@ class Service:
     def delete_all_entries(self):
         status = self.mapper.delete_all_entries()
         return status
+
+    def process_expense_transaction(self, data):
+        status = self.mapper.insert_to_expense(data)
+        return status
+
+    def process_income_transaction(self, data):
+        status = self.mapper.insert_to_income(data)
+        return status
+
+    def process_transfer_transaction(self, data):
+        status = self.mapper.insert_to_transfer(data)
+        return status
