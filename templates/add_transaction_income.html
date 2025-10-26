@@ -48,9 +48,9 @@
         <div class="d-flex justify-content-between align-items-center mb-3" style="background:#232326; border-radius:0.5rem; padding:10px;">
             <div class="d-flex align-items-center gap-2">
                 <span style="font-size:20px;">&#128179;</span>
-                <select id="fromSelect" class="form-select bg-dark text-white border-0 w-auto">
-                    {% for acc in banks.banks %}
-                        <option>{{acc}}</option>
+                <select id="fromSelect" class="form-select bg-transparent border-0 text-black">
+                    {% for account in account_details %}
+                        <option> {{ account[1] }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -59,7 +59,7 @@
 
         <label class="label" for="categorySelect">Category</label>
         <div class="category mb-3">
-            <select id="categorySelect" class="form-select bg-transparent border-0 text-white">
+            <select id="categorySelect" class="form-select bg-transparent border-0 text-black">
                 {% for cat in categories.income %}
                     <option>{{cat}}</option>
                 {% endfor %}

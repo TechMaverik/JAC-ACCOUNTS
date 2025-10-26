@@ -6,14 +6,17 @@ from flask import Flask, render_template, request
 app = Flask(__name__)
 
 
-@app.route("/")
-def dashboard():
-    Handlers().create_tables()
+def account_details_balance():
     account_details = Handlers().fetch_all_accounts()
     current_balance = 0
     for balance in account_details:
         current_balance = current_balance + float(balance[2])
+    return account_details, current_balance
 
+
+@app.route("/")
+def dashboard():
+    account_details, current_balance = account_details_balance()
     return render_template(
         "dashboard.html",
         accounts=account_details,
@@ -34,22 +37,34 @@ def account_entry():
 
 @app.route("/transaction/expense")
 def add_transaction():
+    account_details, current_balance = account_details_balance()
     return render_template(
-        "add_transaction_expense.html", categories=categories, banks=banks
+        "add_transaction_expense.html",
+        account_details=account_details,
+        categories=categories,
+        current_balance=current_balance,
     )
 
 
 @app.route("/transaction/income")
 def add_transaction_income():
+    account_details, current_balance = account_details_balance()
     return render_template(
-        "add_transaction_income.html", categories=categories, banks=banks
+        "add_transaction_income.html",
+        categories=categories,
+        account_details=account_details,
+        current_balance=current_balance,
     )
 
 
 @app.route("/transaction/transfer")
 def add_transaction_transfer():
+    account_details, current_balance = account_details_balance()
     return render_template(
-        "add_transaction_transfer.html", categories=categories, banks=banks
+        "add_transaction_transfer.html",
+        categories=categories,
+        account_details=account_details,
+        current_balance=current_balance,
     )
 
 
@@ -61,13 +76,7 @@ def settings():
 @app.route("/settings/delete", methods=["GET", "POST"])
 def settings_delete():
     status = Handlers().delete_all_entries()
-    account_details = Handlers().fetch_all_accounts()
-    current_balance = 0
-    for balance in account_details:
-        current_balance = current_balance + float(balance[2])
-
-    print(status)
-
+    account_details, current_balance = account_details_balance()
     return render_template(
         "dashboard.html",
         status=status,
