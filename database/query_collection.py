@@ -17,6 +17,10 @@ CREATE TABLE expense (
 )
 """
 
+INSERT_EXPENSE = (
+    """INSERT INTO income (amount, "to", category, date) VALUES (?, ?, ?, ?)"""
+)
+
 CREATE_INCOME = """
 CREATE TABLE income (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

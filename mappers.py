@@ -21,3 +21,53 @@ class Mapper:
             self.conn.close()
         except:
             pass
+
+    def insert_to_bankers(self, data):
+
+        self.cursor.execute(
+            "INSERT INTO bankers (name, balance) VALUES (?, ?)",
+            data,
+        )
+        self.conn.commit()
+        self.conn.close()
+        return True
+
+    def insert_to_income(self, data):
+
+        self.cursor.execute(
+            'INSERT INTO income (amount, "to", category, date) VALUES (?, ?, ?, ?)',
+            data,
+        )
+        self.conn.commit()
+        self.conn.close()
+        return True
+
+    def insert_to_expense(self, data):
+
+        self.cursor.execute(
+            'INSERT INTO expense (amount, "from", category, date) VALUES (?, ?, ?, ?)',
+            data,
+        )
+        self.conn.commit()
+        self.conn.close()
+        return True
+
+    def insert_to_transfer(self, data):
+
+        self.cursor.execute(
+            'INSERT INTO transfer (amount, "from", "to", category, date) VALUES (?, ?, ?, ?, ?)',
+            data,
+        )
+        self.conn.commit()
+        self.conn.close()
+        return True
+
+    def insert_to_investment(self, data):
+
+        self.cursor.execute(
+            'INSERT INTO investment (amount, "from", category, date) VALUES (?, ?, ?, ?)',
+            data,
+        )
+        self.conn.commit()
+        self.conn.close()
+        return True

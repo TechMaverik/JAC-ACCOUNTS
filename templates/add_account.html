@@ -24,23 +24,25 @@
 </style>
 </head>
 <body>
+    <form method="get" action="/account/entry">
     <div class="header">
         <button onclick="window.location.href='/'">Cancel</button>
         <span class="title">New account</span>
-        <button>Done</button>
+        <button type="submit">Done</button>
     </div>
     <div class="section">
         <div class="account-icon">
             <span>&#128179;</span>
         </div>
         <span class="label">Account Name</span>
-        <input class="input" placeholder="Account name">
+        <input class="input" placeholder="Account name" name="name">
        
         <span class="label">Start Balance</span>
-        <input class="input" placeholder="Balance">
+        <input class="input" placeholder="Balance" name="balance">
         
         <small style="color:#bdbdbd;">You can set start balance.<br>It's a balance you started tracking from.</small>
        
     </div>
+    </form>
 </body>
 </html>

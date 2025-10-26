@@ -1,3 +1,4 @@
+from handlers import Handlers
 from menus import categories, banks
 from flask import Flask, render_template, request
 
@@ -7,6 +8,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def dashboard():
+    Handlers().create_tables()
     return render_template("dashboard.html")
 
 
@@ -15,9 +17,10 @@ def add_account():
     return render_template("add_account.html")
 
 
-@app.route("/account/entry", methods=["POST"])
+@app.route("/account/entry", methods=["GET", "POST"])
 def account_entry():
-    return render_template("add_account.html")
+    response = Handlers().handle_account_entry()
+    return render_template("add_account.html", status=response)
 
 
 @app.route("/transaction/expense")

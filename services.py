@@ -7,8 +7,12 @@ class Service:
         self.mapper = Mapper()
         self.mapper.create_tables()
 
+    def create_tables(self):
+        self.mapper.create_tables()
+
     def process_account_entry(self, data):
-        pass
+        print(data)
+        return True
 
     def process_transaction_entry(self, data):
         pass
