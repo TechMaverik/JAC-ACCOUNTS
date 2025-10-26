@@ -1,5 +1,5 @@
 from handlers import Handlers
-from menus import categories, banks
+from menus import categories
 from flask import Flask, render_template, request
 
 
