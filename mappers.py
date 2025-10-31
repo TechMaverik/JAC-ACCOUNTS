@@ -89,3 +89,13 @@ class Mapper:
         self.conn.commit()
         self.conn.close()
         return True
+
+    def select_all_transactions(self):
+        self.cursor.execute("SELECT * FROM expense")
+        expenses = self.cursor.fetchall()
+        self.cursor.execute("SELECT * FROM income")
+        income = self.cursor.fetchall()
+        self.cursor.execute("SELECT * FROM transfer")
+        transfer = self.cursor.fetchall()
+        self.conn.close()
+        return expenses, income, transfer
