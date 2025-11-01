@@ -54,9 +54,25 @@ class Mapper:
 
     def insert_to_transfer(self, data):
 
+        amount = data[0]
+        from_account = data[1]
+        to_account = data[2]
+        category = data[3]
+        date = data[4]
+        transfer_data_income = (amount, to_account, category, date)
+        transfer_data_expense = (amount, from_account, category, date)
+
         self.cursor.execute(
             'INSERT INTO transfer (amount, "from", "to", category, date) VALUES (?, ?, ?, ?, ?)',
             data,
+        )
+        self.cursor.execute(
+            'INSERT INTO income (amount, "to", category, date) VALUES (?, ?, ?, ?)',
+            transfer_data_income,
+        )
+        self.cursor.execute(
+            'INSERT INTO expense (amount, "from", category, date) VALUES (?, ?, ?, ?)',
+            transfer_data_expense,
         )
         self.conn.commit()
         self.conn.close()
@@ -85,7 +101,6 @@ class Mapper:
         self.cursor.execute("DELETE FROM expense")
         self.cursor.execute("DELETE FROM income")
         self.cursor.execute("DELETE FROM transfer")
-        self.cursor.execute("DELETE FROM investment")
         self.conn.commit()
         self.conn.close()
         return True
@@ -99,3 +114,32 @@ class Mapper:
         transfer = self.cursor.fetchall()
         self.conn.close()
         return expenses, income, transfer
+
+    def select_expense_specific_account(self, account_name):
+        self.cursor.execute(
+            'SELECT amount FROM expense WHERE "from" = ?', (account_name,)
+        )
+        expenses = self.cursor.fetchall()
+        expenses_list = [int(amount[0]) for amount in expenses]
+        self.conn.close()
+        return expenses_list
+
+    def select_expense_specific_account(self, account_name):
+        self.cursor.execute(
+            'SELECT amount FROM expense WHERE "from" = ?', (account_name,)
+        )
+        expenses = self.cursor.fetchall()
+        expenses_list = [int(amount[0]) for amount in expenses]
+        self.conn.close()
+        return expenses_list
+
+    def select_income_specific_account(self, account_name):
+        self.cursor.execute('SELECT amount FROM income WHERE "to" = ?', (account_name,))
+        incomes = self.cursor.fetchall()
+        income_list = [int(amount[0]) for amount in incomes]
+        self.conn.close()
+        return income_list
+
+
+ans = Mapper().select_income_specific_account("TEST Bank 1")
+print(ans)
