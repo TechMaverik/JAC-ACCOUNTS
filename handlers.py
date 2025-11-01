@@ -52,3 +52,7 @@ class Handlers:
         data = (amount, from_account, to_account, category, date)
         response = self.service.process_transfer_transaction(data)
         return response
+
+    def total_income_expenses(self):
+        data = Service().total_income_expenses()
+        return data

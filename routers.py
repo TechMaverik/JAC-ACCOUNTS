@@ -17,10 +17,11 @@ def account_details_total_balance():
 @app.route("/")
 def dashboard():
     account_details, total_balance = account_details_total_balance()
+    total_balance = Handlers().total_income_expenses()
     return render_template(
         "dashboard.html",
         accounts=account_details,
-        total_balance=total_balance,
+        total_balance=total_balance["Balance"],
     )
 
 

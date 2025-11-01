@@ -35,30 +35,33 @@ class Service:
         status = self.mapper.insert_to_transfer(data)
         return status
 
-    def check_balance_after_transaction(self):
-        transaction_history_list = []
-        balance_list = []
+    def total_income_expenses(self):
 
-        accounts = self.get_all_accounts()
-        expenserows, incomerows, transferrows = Mapper().select_all_transactions()
+        try:
 
-        for account in accounts:
-            transaction = 0.0
+            accounts = self.get_all_accounts()
+            expenserows, incomerows, transferrows = Mapper().select_all_transactions()
+            expenses = []
+            income = []
+            for account in accounts:
+                for row in expenserows:
+                    if row[2] == account[1]:
+                        expenses.append(row[1])
+                for row in incomerows:
+                    if row[2] == account[1]:
+                        income.append(row[1])
+            return {
+                "Expenses": sum([int(x) for x in expenses]),
+                "Income": sum([int(x) for x in income]),
+                "Balance": sum([int(x) for x in income])
+                - sum([int(x) for x in expenses]),
+            }
+        except:
+            return {
+                "Expenses": 0,
+                "Income": 0,
+                "Balance": 0,
+            }
 
-            for row in expenserows:
-                if row[2] == account[1]:
-                    transaction += float(row[1]) * -1
 
-            for row in incomerows:
-                if row[2] == account[1]:
-                    transaction += float(row[1]) * 1
-
-            balance = float(account[2]) - transaction
-            transaction_history_list.append(transaction)
-            balance_list.append(balance)
-
-        return balance_list, transaction_history_list
-
-
-data = Service().check_balance_after_transaction()
-print(data)
+data = Service().total_income_expenses()
