@@ -26,6 +26,7 @@ income = [
     "💼Salary",
     "🎁Gifts",
     "💰Freelance",
+    "💼Initial Balance",
 ]
 investment = [
     "📈Stocks",
@@ -35,4 +36,12 @@ investment = [
     "🪙Cryptocurrency",
 ]
 
-transfer = ["🏦Bank Transfer", "💸Cash Withdrawal"]
+transfer = [
+    "📈Stocks",
+    "🏠Real Estate",
+    "💼Mutual Funds",
+    "💎Precious Metals",
+    "🪙Cryptocurrency",
+    "🏦Bank Transfer",
+    "💸Cash Withdrawal",
+]
