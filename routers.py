@@ -117,6 +117,7 @@ def settings():
 
 @app.route("/settings/delete", methods=["GET", "POST"])
 def settings_delete():
+    Handlers().delete_all_entries()
     return render_template("settings.html")
 
 

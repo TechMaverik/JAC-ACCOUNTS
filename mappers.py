@@ -114,7 +114,7 @@ class Mapper:
             (account_name,),
         )
         expenses = self.cursor.fetchall()
-        expenses_list = [int(amount[0]) for amount in expenses]
+        expenses_list = [float(amount[0]) for amount in expenses]
         self.conn.close()
         return expenses_list
 
@@ -123,14 +123,14 @@ class Mapper:
             'SELECT amount FROM expense WHERE "from" = ?', (account_name,)
         )
         expenses = self.cursor.fetchall()
-        expenses_list = [int(amount[0]) for amount in expenses]
+        expenses_list = [float(amount[0]) for amount in expenses]
         # self.conn.close()
         return expenses_list
 
     def select_income_specific_account(self, account_name):
         self.cursor.execute('SELECT amount FROM income WHERE "to" = ?', (account_name,))
         incomes = self.cursor.fetchall()
-        income_list = [int(amount[0]) for amount in incomes]
+        income_list = [float(amount[0]) for amount in incomes]
         # self.conn.close()
         return income_list
 
@@ -164,6 +164,3 @@ class Mapper:
         transfer = self.cursor.fetchall()
         self.conn.close()
         return expenses, income, transfer
-
-
-Mapper().select_all__transaction_items()
