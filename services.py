@@ -11,7 +11,6 @@ class Service:
         self.mapper.create_tables()
 
     def process_account_entry(self, data):
-        print(data)
         status = self.mapper.insert_to_bankers(data)
         return status
 

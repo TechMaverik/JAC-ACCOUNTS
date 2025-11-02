@@ -12,7 +12,6 @@ def account_details_total_balance():
 
     for balance in bank_balance:
         total_balance = total_balance + float(balance)
-    print(total_balance)
     return bank_name, bank_balance, total_balance
 
 
@@ -21,7 +20,6 @@ def dashboard():
     bank_name, bank_balance, total_balance = account_details_total_balance()
     expensesitems, incomeitems, transferitems = Handlers().fetch_all_transaction_items()
     account_details = dict(zip(bank_name, bank_balance))
-    print(expensesitems)
     return render_template(
         "dashboard.html",
         account_details=account_details,
