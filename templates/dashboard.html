@@ -23,12 +23,59 @@
     .trans-list { margin: 0 28px; margin-top: 16px;}
     .section-date { font-size: 14px; color: #aac; margin: 24px 0 6px 0;}
     .trans { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #24243a;}
-    .trans .left { display: flex; align-items: center;}
+    .trans .left { display: flex; align-items: center; justify-content: space-between; }
+    .trans .mid { display: flex; align-items: center; justify-content: space-between; margin-right: 120px;}
     .trans .icon { width: 34px; height: 34px; border-radius: 11px; background: #39395a; display: flex; align-items:center; justify-content:center; font-size: 21px; margin-right: 17px;}
     .trans .desc { font-size: 16px; color: #fff;}
-    .trans .amt { color: #ff6868; font-weight: bold; font-size: 15px;}
+    .trans .amt { color: #ab3d3d; font-weight: bold; font-size: 15px;}
+    .trans .inc { color: #0bdd3cbc; font-weight: bold; font-size: 15px;}
+    .trans .tx { color: #dd0bbebc; font-weight: bold; font-size: 15px;}
     .add-bar { position: fixed; bottom: 12px; left: 0; width: 100vw; display: flex; justify-content: flex-end; margin-left: 280px;}
     .add-btn { background: #1781ff; color: #fff; padding: 10px 28px; margin-right: 24px; border-radius: 28px; font-size:16px; border: none;}
+
+    .trans-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    margin-top: 1em;
+}
+
+.trans-table thead {
+    background-color: #4a90e2;
+    color: white;
+}
+
+.trans-table th, .trans-table td {
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.trans-table tbody tr:nth-child(even) {
+    background-color: #000000;
+}
+
+.trans-table tbody tr:hover {
+    background-color: #686b6d;
+}
+
+.trans-table .amt {
+    color: #d9534f; /* red for expenses */
+    font-weight: bold;
+}
+
+.trans-table .inc {
+    color: #5cb85c; /* green for income */
+    font-weight: bold;
+}
+
+.trans-table .tx {
+    color: #f0ad4e; /* orange for transfers */
+    font-weight: bold;
+}
+    
+
+
 </style>
 </head>
 <body>
@@ -41,30 +88,114 @@
         <a href="/" style="color:#c2f262;">Balance <span style="font-size:15px;">₹{{ total_balance }}</span></a>
         <a href="/transaction/expense">Add transactions</a>
         <a href="/settings">Settings</a>
+        
     </div>
+    
     <div class="accounts">
-        {% for account in accounts %}
-        <div class="account"><span><span class="account-icon">&#128179;</span> {{ account[1] }} </span> <span class="account-balance">₹{{ account[2] }}</span></div>
-        {% endfor %}
+        <!-- {% for account in bank_name %}
+        <div class="account"><span><span class="account-icon">&#128179;</span> {{ account }} </span> <span class="account-balance">₹{{ account[2] }}</span></div>
+        {% endfor %} -->
+
+        {% for account_name, balance in account_details.items() %}
+    <div class="account">
+        <span><span class="account-icon">&#128179;</span> {{ account_name }} </span> 
+        <span class="account-balance">₹{{ balance }}</span>
+    </div>
+{% endfor %}
+<div class="accounts">Developed by TechMaverik</div>
+
+        
     </div>
 </div>
 <div class="content">
     <div class="header">
-        <div class="title">All transactions</div>
-    </div>
-    <div class="trans-list">
-        <div class="section-date">Fri, 17 Oct</div>
-        <div class="trans"><div class="left"><div class="icon" style="background:#bb61fa;">🍽️</div><div><span class="desc">Zomato</span><br><span style="color:#aaa;font-size:13px;">IOB Bank 22:28</span></div></div> <span class="amt">-₹1,673</span></div>
-        <!-- 
-        
-        <div class="trans"><div class="left"><div class="icon" style="background:#fca557;">🛍️</div><div><span class="desc">Shopping</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:27</span></div></div> <span class="amt">-₹700</span></div>
-        <div class="trans"><div class="left"><div class="icon" style="background:#71a5fa;">🍱</div><div><span class="desc">Food</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:27</span></div></div> <span class="amt">-₹607</span></div>
-        <div class="trans"><div class="left"><div class="icon" style="background:#71a5fa;">🍱</div><div><span class="desc">Food</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:25</span></div></div> <span class="amt">-₹15</span></div>
-        <div class="trans"><div class="left"><div class="icon" style="background:#fcba61;">🚗</div><div><span class="desc">Transport</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:26</span></div></div> <span class="amt">-₹54</span></div>
-        <div class="trans"><div class="left"><div class="icon" style="background:#71a5fa;">🍱</div><div><span class="desc">Food</span><br><span style="color:#aaa;font-size:13px;">HDFC MAIN CARD 22:25</span></div></div> <span class="amt">-₹297</span></div> -->
-
-        </div>
+    <div class="title">All Expenses</div>
 </div>
-<div class="add-bar"><button class="add-btn">+ Add transaction</button></div>
+
+<table class="trans-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Amount</th>
+        </tr>
+        
+    </thead>
+    <tbody>
+        {% for item in expensesitems|reverse %}
+        <tr>
+            <td>{{ item[4] }}</td>
+            <td>{{ item[3] }}</td>
+            <td>{{ item[2] }}</td>
+            <td class="amt">-₹{{ item[1] }}</td>
+        </tr>
+        {% endfor %}
+
+    </tbody>
+</table>
+</div>
+
+<div class="content">
+    <div class="header">
+    <div class="title">All Income Sources</div>
+</div>
+<table class="trans-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Amount</th>
+        </tr>
+        
+    </thead>
+    <tbody>
+       
+        {% for item in incomeitems|reverse %}
+        <tr>
+            <td>{{ item[4] }}</td>
+            <td>{{ item[3] }}</td>
+            <td>{{ item[2] }}</td>
+            <td class="inc">+₹{{ item[1] }}</td>
+        </tr>
+        {% endfor %}
+
+    </tbody>
+</table>
+
+</div>
+<div class="content">
+    <div class="header">
+    <div class="title">All Transfer Sources</div>
+</div>
+<table class="trans-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Transfer</th>
+            <th>Amount</th>
+        </tr>
+        
+    </thead>
+    <tbody>
+       
+        {% for item in transferitems|reverse %}
+        <tr>
+            <td>{{ item[5] }}</td>
+            <td>{{ item[2] }}</td>
+            <td>{{ item[3] }}</td>
+            <td>{{ item[4] }}</td>            
+            <td class="inc">+₹{{ item[1] }}</td>
+        </tr>
+        {% endfor %}
+
+    </tbody>
+</table>
+
+<!-- <div class="add-bar"><button class="add-btn">+ Add transaction</button></div> -->
+
 </body>
 </html>

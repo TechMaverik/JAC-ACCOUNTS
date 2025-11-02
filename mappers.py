@@ -88,13 +88,6 @@ class Mapper:
         self.conn.close()
         return True
 
-    def select_accounts(self):
-
-        self.cursor.execute("SELECT * FROM banker")
-        accounts = self.cursor.fetchall()
-        self.conn.close()
-        return accounts
-
     def delete_all_entries(self):
 
         self.cursor.execute("DELETE FROM banker")
@@ -117,7 +110,8 @@ class Mapper:
 
     def select_expense_specific_account(self, account_name):
         self.cursor.execute(
-            'SELECT amount FROM expense WHERE "from" = ?', (account_name,)
+            'SELECT amount FROM expense WHERE "from" = ?  ORDER BY id DESC',
+            (account_name,),
         )
         expenses = self.cursor.fetchall()
         expenses_list = [int(amount[0]) for amount in expenses]
@@ -130,16 +124,46 @@ class Mapper:
         )
         expenses = self.cursor.fetchall()
         expenses_list = [int(amount[0]) for amount in expenses]
-        self.conn.close()
+        # self.conn.close()
         return expenses_list
 
     def select_income_specific_account(self, account_name):
         self.cursor.execute('SELECT amount FROM income WHERE "to" = ?', (account_name,))
         incomes = self.cursor.fetchall()
         income_list = [int(amount[0]) for amount in incomes]
-        self.conn.close()
+        # self.conn.close()
         return income_list
 
+    def select_accounts(self):
+        bank_name = []
+        bank_balance = []
+        self.cursor.execute("SELECT * FROM banker")
+        accounts = self.cursor.fetchall()
+        for account in accounts:
+            bank = account[1]
+            bank_name.append(bank)
+            select_income_specific_account = self.select_income_specific_account(bank)
+            select_expense_specific_account = self.select_expense_specific_account(bank)
+            bank_balance.append(
+                sum(select_income_specific_account)
+                - sum(select_expense_specific_account)
+            )
 
-ans = Mapper().select_income_specific_account("TEST Bank 1")
-print(ans)
+        self.conn.close()
+        return (
+            bank_name,
+            bank_balance,
+        )
+
+    def select_all__transaction_items(self):
+        self.cursor.execute("SELECT * FROM expense")
+        expenses = self.cursor.fetchall()
+        self.cursor.execute("SELECT * FROM income")
+        income = self.cursor.fetchall()
+        self.cursor.execute("SELECT * FROM transfer")
+        transfer = self.cursor.fetchall()
+        self.conn.close()
+        return expenses, income, transfer
+
+
+Mapper().select_all__transaction_items()

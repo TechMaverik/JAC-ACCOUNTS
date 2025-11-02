@@ -51,7 +51,7 @@
                 <span style="font-size:20px;">&#128179;</span>
                 <select id="fromSelect" class="form-select bg-transparent border-0 text-black" name="from_account" required>
                     {% for account in account_details %}
-                        <option> {{ account[1] }}</option>
+                        <option> {{ account }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -64,7 +64,7 @@
                 <span style="font-size:20px;">&#128179;</span>
                 <select id="fromSelect" class="form-select bg-transparent border-0 text-black" name="to_account" required>
                     {% for account in account_details %}
-                        <option> {{ account[1] }}</option>
+                        <option> {{ account }}</option>
                     {% endfor %}
                 </select>
             </div>

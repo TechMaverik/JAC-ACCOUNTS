@@ -16,8 +16,8 @@ class Service:
         return status
 
     def get_all_accounts(self):
-        accounts = self.mapper.select_accounts()
-        return accounts
+        bank_name, bank_balance = self.mapper.select_accounts()
+        return bank_name, bank_balance
 
     def delete_all_entries(self):
         status = self.mapper.delete_all_entries()
@@ -63,5 +63,6 @@ class Service:
                 "Balance": 0,
             }
 
-
-data = Service().total_income_expenses()
+    def select_all__transaction_items(self):
+        expenses, income, transfer = self.mapper.select_all__transaction_items()
+        return expenses, income, transfer

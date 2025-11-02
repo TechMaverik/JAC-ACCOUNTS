@@ -7,21 +7,28 @@ app = Flask(__name__)
 
 
 def account_details_total_balance():
-    account_details = Handlers().fetch_all_accounts()
+    bank_name, bank_balance = Handlers().fetch_all_accounts()
     total_balance = 0
-    for balance in account_details:
-        total_balance = total_balance + float(balance[2])
-    return account_details, total_balance
+
+    for balance in bank_balance:
+        total_balance = total_balance + float(balance)
+    print(total_balance)
+    return bank_name, bank_balance, total_balance
 
 
 @app.route("/")
 def dashboard():
-    account_details, total_balance = account_details_total_balance()
-    total_balance = Handlers().total_income_expenses()
+    bank_name, bank_balance, total_balance = account_details_total_balance()
+    expensesitems, incomeitems, transferitems = Handlers().fetch_all_transaction_items()
+    account_details = dict(zip(bank_name, bank_balance))
+    print(expensesitems)
     return render_template(
         "dashboard.html",
-        accounts=account_details,
-        total_balance=total_balance["Balance"],
+        account_details=account_details,
+        total_balance=total_balance,
+        expensesitems=expensesitems,
+        incomeitems=incomeitems,
+        transferitems=transferitems,
     )
 
 
@@ -38,10 +45,10 @@ def account_entry():
 
 @app.route("/transaction/expense")
 def add_transaction():
-    account_details, total_balance = account_details_total_balance()
+    bank_name, bank_balance, total_balance = account_details_total_balance()
     return render_template(
         "add_transaction_expense.html",
-        account_details=account_details,
+        account_details=bank_name,
         categories=categories,
         total_balance=total_balance,
     )
@@ -50,10 +57,10 @@ def add_transaction():
 @app.route("/transaction/expense/entry", methods=["GET", "POST"])
 def transaction_expense_entry():
     status = Handlers().handle_expense_transaction()
-    account_details, total_balance = account_details_total_balance()
+    bank_name, bank_balance, total_balance = account_details_total_balance()
     return render_template(
         "add_transaction_expense.html",
-        account_details=account_details,
+        account_details=bank_name,
         categories=categories,
         total_balance=total_balance,
     )
@@ -61,11 +68,11 @@ def transaction_expense_entry():
 
 @app.route("/transaction/income")
 def add_transaction_income():
-    account_details, total_balance = account_details_total_balance()
+    bank_name, bank_balance, total_balance = account_details_total_balance()
     return render_template(
         "add_transaction_income.html",
         categories=categories,
-        account_details=account_details,
+        account_details=bank_name,
         total_balance=total_balance,
     )
 
@@ -73,22 +80,22 @@ def add_transaction_income():
 @app.route("/transaction/income/entry", methods=["GET", "POST"])
 def transaction_income_entry():
     status = Handlers().handle_income_transaction()
-    account_details, total_balance = account_details_total_balance()
+    bank_name, bank_balance, total_balance = account_details_total_balance()
     return render_template(
         "add_transaction_income.html",
         categories=categories,
-        account_details=account_details,
+        account_details=bank_name,
         total_balance=total_balance,
     )
 
 
 @app.route("/transaction/transfer")
 def add_transaction_transfer():
-    account_details, total_balance = account_details_total_balance()
+    bank_name, bank_balance, total_balance = account_details_total_balance()
     return render_template(
         "add_transaction_transfer.html",
         categories=categories,
-        account_details=account_details,
+        account_details=bank_name,
         total_balance=total_balance,
     )
 
@@ -96,11 +103,11 @@ def add_transaction_transfer():
 @app.route("/transaction/transfer/entry", methods=["GET", "POST"])
 def transaction_transfer_entry():
     status = Handlers().handle_transfer_transaction()
-    account_details, total_balance = account_details_total_balance()
+    bank_name, bank_balance, total_balance = account_details_total_balance()
     return render_template(
         "add_transaction_transfer.html",
         categories=categories,
-        account_details=account_details,
+        account_details=bank_name,
         total_balance=total_balance,
     )
 
@@ -112,14 +119,7 @@ def settings():
 
 @app.route("/settings/delete", methods=["GET", "POST"])
 def settings_delete():
-    status = Handlers().delete_all_entries()
-    account_details, total_balance = account_details_total_balance()
-    return render_template(
-        "dashboard.html",
-        status=status,
-        total_balance=total_balance,
-        accounts=account_details,
-    )
+    return render_template("settings.html")
 
 
 if __name__ == "__main__":

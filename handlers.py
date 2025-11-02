@@ -22,8 +22,8 @@ class Handlers:
         return response
 
     def fetch_all_accounts(self):
-        accounts = self.service.get_all_accounts()
-        return accounts
+        bank_name, bank_balance = self.service.get_all_accounts()
+        return bank_name, bank_balance
 
     def handle_expense_transaction(self):
         amount = request.form.get("amount")
@@ -56,3 +56,7 @@ class Handlers:
     def total_income_expenses(self):
         data = Service().total_income_expenses()
         return data
+
+    def fetch_all_transaction_items(self):
+        expenses, income, transfer = self.service.select_all__transaction_items()
+        return expenses, income, transfer
