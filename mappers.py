@@ -145,8 +145,8 @@ class Mapper:
             select_income_specific_account = self.select_income_specific_account(bank)
             select_expense_specific_account = self.select_expense_specific_account(bank)
             bank_balance.append(
-                sum(select_income_specific_account)
-                - sum(select_expense_specific_account)
+                round(sum(select_income_specific_account), 2)
+                - round(sum(select_expense_specific_account), 2)
             )
 
         self.conn.close()
