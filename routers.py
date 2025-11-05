@@ -11,7 +11,7 @@ def account_details_total_balance():
     total_balance = 0
 
     for balance in bank_balance:
-        total_balance = total_balance + float(balance)
+        total_balance = round(total_balance + float(balance), 2)
     return bank_name, bank_balance, total_balance
 
 

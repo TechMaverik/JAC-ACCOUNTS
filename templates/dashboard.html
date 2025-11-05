@@ -99,7 +99,7 @@
         {% for account_name, balance in account_details.items() %}
     <div class="account">
         <span><span class="account-icon">&#128179;</span> {{ account_name }} </span> 
-        <span class="account-balance">₹{{ balance }}</span>
+        <span class="account-balance">₹{{ "%.2f"|format(balance) }}</span>
     </div>
 {% endfor %}
 <div class="accounts">Developed by TechMaverik</div>
