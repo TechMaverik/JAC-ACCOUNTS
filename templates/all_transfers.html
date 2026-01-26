@@ -84,7 +84,6 @@
     <div class="menu">
         <!-- <a href="#">Export Data</a>
         <a href="#">Analytics</a> -->
-       
         <a href="/account">Bank Account</a>
         <a href="/" style="color:#c2f262;">Balance <span style="font-size:15px;">₹{{ total_balance }}</span></a>
         <a href="/transaction/expense">Add transactions</a>       
@@ -111,64 +110,7 @@
         
     </div>
 </div>
-<div class="content">
-    <div class="header">
-    <div class="title">All Expenses</div>
-</div>
 
-<table class="trans-table">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Category</th>
-            <th>Description</th>
-            <th>Amount</th>
-        </tr>
-        
-    </thead>
-    <tbody>
-        {% for item in expensesitems|reverse %}
-        <tr>
-            <td>{{ item[4] }}</td>
-            <td>{{ item[3] }}</td>
-            <td>{{ item[2] }}</td>
-            <td class="amt">-₹{{ item[1] }}</td>
-        </tr>
-        {% endfor %}
-
-    </tbody>
-</table>
-</div>
-
-<div class="content">
-    <div class="header">
-    <div class="title">All Income Sources</div>
-</div>
-<table class="trans-table">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Category</th>
-            <th>Description</th>
-            <th>Amount</th>
-        </tr>
-        
-    </thead>
-    <tbody>
-       
-        {% for item in incomeitems|reverse %}
-        <tr>
-            <td>{{ item[4] }}</td>
-            <td>{{ item[3] }}</td>
-            <td>{{ item[2] }}</td>
-            <td class="inc">+₹{{ item[1] }}</td>
-        </tr>
-        {% endfor %}
-
-    </tbody>
-</table>
-
-</div>
 <div class="content">
     <div class="header">
     <div class="title">All Transfer Sources</div>

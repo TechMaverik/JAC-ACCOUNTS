@@ -29,6 +29,42 @@ def dashboard():
         transferitems=transferitems,
     )
 
+@app.route("/expenses")
+def expenses():
+    bank_name, bank_balance, total_balance = account_details_total_balance()
+    expensesitems, incomeitems, transferitems = Handlers().fetch_all_transaction_items()
+    account_details = dict(zip(bank_name, bank_balance))
+    return render_template(
+        "all_expense.html",
+        account_details=account_details,
+        total_balance=total_balance,
+        expensesitems=expensesitems,        
+    )
+
+@app.route("/incomes")
+def incomes():
+    bank_name, bank_balance, total_balance = account_details_total_balance()
+    expensesitems, incomeitems, transferitems = Handlers().fetch_all_transaction_items()
+    account_details = dict(zip(bank_name, bank_balance))
+    return render_template(
+        "all_income.html",
+        account_details=account_details,
+        total_balance=total_balance,       
+        incomeitems=incomeitems,       
+    )
+
+@app.route("/transfers")
+def transfers():
+    bank_name, bank_balance, total_balance = account_details_total_balance()
+    expensesitems, incomeitems, transferitems = Handlers().fetch_all_transaction_items()
+    account_details = dict(zip(bank_name, bank_balance))
+    return render_template(
+        "all_transfers.html",
+        account_details=account_details,
+        total_balance=total_balance,        
+        transferitems=transferitems,
+    )
+
 
 @app.route("/account")
 def add_account():
