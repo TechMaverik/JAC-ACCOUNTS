@@ -12,11 +12,13 @@ class Mapper:
     def create_tables(self):
         try:
 
+            self.cursor.execute(query_collection.CREATE_CREDENTIALS)
             self.cursor.execute(query_collection.CREATE_BANKERS)
             self.cursor.execute(query_collection.CREATE_EXPENSE)
             self.cursor.execute(query_collection.CREATE_INCOME)
             self.cursor.execute(query_collection.CREATE_TRANSFER)
             self.cursor.execute(query_collection.CREATE_INVESTMENT)
+            self.cursor.execute(query_collection.CREATE_LIABILITY)
             self.conn.commit()
 
         except:
@@ -25,7 +27,7 @@ class Mapper:
     def insert_to_bankers(self, data):
 
         self.cursor.execute(
-            "INSERT INTO banker (account_name, balance) VALUES (?, ?)",
+            "INSERT INTO banker (account_name) VALUES (?)",
             data,
         )
         self.conn.commit()

@@ -1,9 +1,16 @@
 DB_LOC = "database/jac_accounts.db"
+
+CREATE_CREDENTIALS="""
+CREATE TABLE credentials (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    password TEXT NOT NULL
+) """
+
 CREATE_BANKERS = """
 CREATE TABLE banker (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    account_name TEXT NOT NULL,
-    balance TEXT NOT NULL
+    account_name TEXT NOT NULL
 )
 """
 
@@ -51,3 +58,11 @@ CREATE TABLE investment (
     date TEXT NOT NULL
 )
 """
+
+CREATE_LIABILITY="""
+CREATE TABLE liability (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    liability TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    description TEXT NOT NULL
+) """

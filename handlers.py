@@ -10,10 +10,9 @@ class Handlers:
     def create_tables(self):
         self.service.create_tables()
 
-    def handle_account_entry(self):
-        balance = request.form.get("balance")
+    def handle_account_entry(self):       
         name = request.form.get("name")
-        data = (name, balance)
+        data = (name,)
         response = self.service.process_account_entry(data)
         return response
 
