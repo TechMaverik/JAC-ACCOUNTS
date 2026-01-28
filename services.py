@@ -10,6 +10,10 @@ class Service:
     def create_tables(self):
         self.mapper.create_tables()
 
+    def process_liability_entry(self, data):
+        status = self.mapper.insert_to_liabilities(data)
+        return status
+
     def process_account_entry(self, data):
         status = self.mapper.insert_to_bankers(data)
         return status

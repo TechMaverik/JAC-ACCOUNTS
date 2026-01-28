@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Liability</title>
+<style>
+    body { background: #18181b; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0;}
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #232326;}
+    .header button, .header span { color: #1677ff; font-size: 18px; background: none; border: none;}
+    .title { font-size: 20px; font-weight: bold; color: #fff;}
+    .section { margin: 24px 16px; }
+    .account-icon { 
+        display: flex; justify-content: center; align-items: center;
+        background: #a882fc; border-radius: 18px; width: 64px; height: 64px; margin: 24px auto 12px auto;
+        font-size: 38px;
+    }
+    .input, .option { background: #232326; border-radius: 8px; padding: 14px; border: none; color: #fff; margin-bottom: 10px; width: 100%;}
+    .label { color: #aecbfa; font-size: 15px; margin-bottom: 6px; display: block;}
+    .row { display: flex; align-items: center; justify-content: space-between; }
+    .switch-row { display: flex; align-items: center; justify-content: space-between; margin-top: 20px;}
+    .switch-label { color: #c1c1c1;}
+    .switch { width: 40px; height: 22px; background: #303047; border-radius: 11px; position: relative;}
+    .switch-knob { width: 18px; height: 18px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px;}
+</style>
+</head>
+<body>
+    <form method="POST" action="/liability/entry">
+        <div class="header">
+            <button class="btn btn-link p-0" onclick="window.location.href='/'">Cancel</button>
+            <span class="title">Liability</span>
+            <button type="submit">Done</button>
+        </div>
+        <div class="section">
+            <div class="account-icon">
+                <span>😨</span>
+            </div>
+            
+            <input class="input" placeholder="Liability name" name="liability" required>
+            <input class="input" placeholder="Amount" name="amount" required>
+            <input class="input" placeholder="Description" name="description" required>
+            
+        
+        </div>
+    </form>
+</body>
+</html>

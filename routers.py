@@ -29,6 +29,7 @@ def dashboard():
         transferitems=transferitems,
     )
 
+
 @app.route("/expenses")
 def expenses():
     bank_name, bank_balance, total_balance = account_details_total_balance()
@@ -38,8 +39,9 @@ def expenses():
         "all_expense.html",
         account_details=account_details,
         total_balance=total_balance,
-        expensesitems=expensesitems,        
+        expensesitems=expensesitems,
     )
+
 
 @app.route("/incomes")
 def incomes():
@@ -49,9 +51,10 @@ def incomes():
     return render_template(
         "all_income.html",
         account_details=account_details,
-        total_balance=total_balance,       
-        incomeitems=incomeitems,       
+        total_balance=total_balance,
+        incomeitems=incomeitems,
     )
+
 
 @app.route("/transfers")
 def transfers():
@@ -61,7 +64,7 @@ def transfers():
     return render_template(
         "all_transfers.html",
         account_details=account_details,
-        total_balance=total_balance,        
+        total_balance=total_balance,
         transferitems=transferitems,
     )
 
@@ -75,6 +78,17 @@ def add_account():
 def account_entry():
     response = Handlers().handle_account_entry()
     return render_template("add_account.html", status=response)
+
+
+@app.route("/liability")
+def add_liability():
+    return render_template("add_liability.html")
+
+
+@app.route("/liability/entry", methods=["GET", "POST"])
+def liability_entry():
+    response = Handlers().handle_liability_entry()
+    return render_template("add_liability.html", status=response)
 
 
 @app.route("/transaction/expense")

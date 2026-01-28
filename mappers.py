@@ -24,6 +24,15 @@ class Mapper:
         except:
             pass
 
+    def insert_to_liabilities(self, data):
+        self.cursor.execute(
+            "INSERT INTO liability (liability,amount,description) VALUES (?,?,?)",
+            data,
+        )
+        self.conn.commit()
+        self.conn.close()
+        return True
+
     def insert_to_bankers(self, data):
 
         self.cursor.execute(

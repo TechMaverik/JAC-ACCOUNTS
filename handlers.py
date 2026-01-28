@@ -10,7 +10,15 @@ class Handlers:
     def create_tables(self):
         self.service.create_tables()
 
-    def handle_account_entry(self):       
+    def handle_liability_entry(self):
+        liability = request.form.get("liability")
+        amount = request.form.get("amount")
+        description = request.form.get("description")
+        data = (liability, amount, description)
+        response = self.service.process_liability_entry(data=data)
+        return response
+
+    def handle_account_entry(self):
         name = request.form.get("name")
         data = (name,)
         response = self.service.process_account_entry(data)
