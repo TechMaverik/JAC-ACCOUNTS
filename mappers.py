@@ -1,177 +1,235 @@
 import sqlite3
+from contextlib import contextmanager
+
 from database import query_collection
 
 
 class Mapper:
 
-    def __init__(self):
-
-        self.conn = sqlite3.connect(query_collection.DB_LOC)
-        self.cursor = self.conn.cursor()
+    @contextmanager
+    def _cursor(self, commit=False):
+        conn = sqlite3.connect(query_collection.DB_LOC)
+        try:
+            yield conn.cursor()
+            if commit:
+                conn.commit()
+        finally:
+            conn.close()
 
     def create_tables(self):
-        try:
+        with self._cursor(commit=True) as cursor:
 
-            self.cursor.execute(query_collection.CREATE_CREDENTIALS)
-            self.cursor.execute(query_collection.CREATE_BANKERS)
-            self.cursor.execute(query_collection.CREATE_EXPENSE)
-            self.cursor.execute(query_collection.CREATE_INCOME)
-            self.cursor.execute(query_collection.CREATE_TRANSFER)
-            self.cursor.execute(query_collection.CREATE_INVESTMENT)
-            self.cursor.execute(query_collection.CREATE_LIABILITY)
-            self.conn.commit()
+            def columns_of(table):
+                cursor.execute(f"PRAGMA table_info({table})")
+                return [row[1] for row in cursor.fetchall()]
 
-        except:
-            pass
+            # Renames run first: a CREATE IF NOT EXISTS under the new name would
+            # otherwise leave the old table - and its rows - stranded.
+            cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+            tables = {row[0] for row in cursor.fetchall()}
+            for old_name, new_name in query_collection.TABLE_RENAMES:
+                if old_name in tables and new_name not in tables:
+                    cursor.execute(f"ALTER TABLE {old_name} RENAME TO {new_name}")
+                    tables.add(new_name)
 
-    def insert_to_liabilities(self, data):
-        self.cursor.execute(
-            "INSERT INTO liability (liability,amount,description) VALUES (?,?,?)",
-            data,
-        )
-        self.conn.commit()
-        self.conn.close()
+            for table, old_column, new_column in query_collection.COLUMN_RENAMES:
+                if table not in tables:
+                    continue
+                columns = columns_of(table)
+                if old_column in columns and new_column not in columns:
+                    cursor.execute(
+                        f"ALTER TABLE {table} RENAME COLUMN {old_column} TO {new_column}"
+                    )
+
+            for statement in query_collection.CREATE_STATEMENTS:
+                cursor.execute(statement)
+
+            for table, column, statement in query_collection.COLUMN_MIGRATIONS:
+                if column not in columns_of(table):
+                    cursor.execute(statement)
+
+    def insert_to_debts(self, data):
+        with self._cursor(commit=True) as cursor:
+            cursor.execute(query_collection.INSERT_DEBT, data)
         return True
 
     def insert_to_bankers(self, data):
-
-        self.cursor.execute(
-            "INSERT INTO banker (account_name) VALUES (?)",
-            data,
-        )
-        self.conn.commit()
-        self.conn.close()
+        with self._cursor(commit=True) as cursor:
+            cursor.execute(query_collection.INSERT_BANKER, data)
         return True
 
     def insert_to_income(self, data):
-
-        self.cursor.execute(
-            'INSERT INTO income (amount, "to", category, date) VALUES (?, ?, ?, ?)',
-            data,
-        )
-        self.conn.commit()
-        self.conn.close()
+        with self._cursor(commit=True) as cursor:
+            cursor.execute(query_collection.INSERT_INCOME, data)
         return True
 
     def insert_to_expense(self, data):
-
-        self.cursor.execute(
-            'INSERT INTO expense (amount, "from", category, date) VALUES (?, ?, ?, ?)',
-            data,
-        )
-        self.conn.commit()
-        self.conn.close()
+        with self._cursor(commit=True) as cursor:
+            cursor.execute(query_collection.INSERT_EXPENSE, data)
         return True
 
     def insert_to_transfer(self, data):
+        """Record a transfer plus the income/expense legs it produces.
 
-        amount = data[0]
-        from_account = data[1]
-        to_account = data[2]
-        category = data[3]
-        date = data[4]
-        transfer_data_income = (amount, to_account, category, date)
-        transfer_data_expense = (amount, from_account, category, date)
+        The expense leg is booked in the sending account's currency and the
+        income leg in the receiving account's currency, so a cross currency
+        transfer leaves both balances correct.
+        """
+        (
+            amount,
+            from_account,
+            to_account,
+            category,
+            date,
+            currency,
+            to_amount,
+            to_currency,
+            rate,
+        ) = data
 
-        self.cursor.execute(
-            'INSERT INTO transfer (amount, "from", "to", category, date) VALUES (?, ?, ?, ?, ?)',
-            data,
-        )
-        self.cursor.execute(
-            'INSERT INTO income (amount, "to", category, date) VALUES (?, ?, ?, ?)',
-            transfer_data_income,
-        )
-        self.cursor.execute(
-            'INSERT INTO expense (amount, "from", category, date) VALUES (?, ?, ?, ?)',
-            transfer_data_expense,
-        )
-        self.conn.commit()
-        self.conn.close()
+        with self._cursor(commit=True) as cursor:
+            cursor.execute(query_collection.INSERT_TRANSFER, data)
+            cursor.execute(
+                query_collection.INSERT_INCOME,
+                (to_amount, to_account, category, date, to_currency, "transfer"),
+            )
+            cursor.execute(
+                query_collection.INSERT_EXPENSE,
+                (amount, from_account, category, date, currency, "transfer"),
+            )
         return True
 
     def insert_to_investment(self, data):
-
-        self.cursor.execute(
-            'INSERT INTO investment (amount, "from", category, date) VALUES (?, ?, ?, ?)',
-            data,
-        )
-        self.conn.commit()
-        self.conn.close()
+        with self._cursor(commit=True) as cursor:
+            cursor.execute(query_collection.INSERT_INVESTMENT, data)
         return True
 
     def delete_all_entries(self):
-
-        self.cursor.execute("DELETE FROM banker")
-        self.cursor.execute("DELETE FROM expense")
-        self.cursor.execute("DELETE FROM income")
-        self.cursor.execute("DELETE FROM transfer")
-        self.conn.commit()
-        self.conn.close()
+        with self._cursor(commit=True) as cursor:
+            cursor.execute("DELETE FROM banker")
+            cursor.execute("DELETE FROM expense")
+            cursor.execute("DELETE FROM income")
+            cursor.execute("DELETE FROM transfer")
         return True
 
-    def select_all_transactions(self):
-        self.cursor.execute("SELECT * FROM expense")
-        expenses = self.cursor.fetchall()
-        self.cursor.execute("SELECT * FROM income")
-        income = self.cursor.fetchall()
-        self.cursor.execute("SELECT * FROM transfer")
-        transfer = self.cursor.fetchall()
-        self.conn.close()
-        return expenses, income, transfer
-
-    def select_expense_specific_account(self, account_name):
-        self.cursor.execute(
-            'SELECT amount FROM expense WHERE "from" = ?  ORDER BY id DESC',
-            (account_name,),
-        )
-        expenses = self.cursor.fetchall()
-        expenses_list = [float(amount[0]) for amount in expenses]
-        self.conn.close()
-        return expenses_list
-
-    def select_expense_specific_account(self, account_name):
-        self.cursor.execute(
-            'SELECT amount FROM expense WHERE "from" = ?', (account_name,)
-        )
-        expenses = self.cursor.fetchall()
-        expenses_list = [float(amount[0]) for amount in expenses]
-        # self.conn.close()
-        return expenses_list
-
-    def select_income_specific_account(self, account_name):
-        self.cursor.execute('SELECT amount FROM income WHERE "to" = ?', (account_name,))
-        incomes = self.cursor.fetchall()
-        income_list = [float(amount[0]) for amount in incomes]
-        # self.conn.close()
-        return income_list
-
     def select_accounts(self):
-        bank_name = []
-        bank_balance = []
-        self.cursor.execute("SELECT * FROM banker")
-        accounts = self.cursor.fetchall()
-        for account in accounts:
-            bank = account[1]
-            bank_name.append(bank)
-            select_income_specific_account = self.select_income_specific_account(bank)
-            select_expense_specific_account = self.select_expense_specific_account(bank)
-            bank_balance.append(
-                round(sum(select_income_specific_account), 2)
-                - round(sum(select_expense_specific_account), 2)
-            )
+        with self._cursor() as cursor:
+            cursor.execute("SELECT id, account_name, currency FROM banker ORDER BY id")
+            return cursor.fetchall()
 
-        self.conn.close()
-        return (
-            bank_name,
-            bank_balance,
-        )
+    def select_account_currency(self, account_name):
+        with self._cursor() as cursor:
+            cursor.execute(
+                "SELECT currency FROM banker WHERE account_name = ?", (account_name,)
+            )
+            row = cursor.fetchone()
+        return row[0] if row else None
+
+    def select_income_totals(self):
+        with self._cursor() as cursor:
+            cursor.execute(
+                'SELECT "to", SUM(CAST(amount AS REAL)) FROM income GROUP BY "to"'
+            )
+            return {row[0]: row[1] or 0.0 for row in cursor.fetchall()}
+
+    def select_expense_totals(self):
+        with self._cursor() as cursor:
+            cursor.execute(
+                'SELECT "from", SUM(CAST(amount AS REAL)) FROM expense GROUP BY "from"'
+            )
+            return {row[0]: row[1] or 0.0 for row in cursor.fetchall()}
+
+    def select_all_transactions(self):
+        with self._cursor() as cursor:
+            cursor.execute("SELECT * FROM expense")
+            expenses = cursor.fetchall()
+            cursor.execute("SELECT * FROM income")
+            income = cursor.fetchall()
+            cursor.execute("SELECT * FROM transfer")
+            transfer = cursor.fetchall()
+        return expenses, income, transfer
 
     def select_all__transaction_items(self):
-        self.cursor.execute("SELECT * FROM expense")
-        expenses = self.cursor.fetchall()
-        self.cursor.execute("SELECT * FROM income")
-        income = self.cursor.fetchall()
-        self.cursor.execute("SELECT * FROM transfer")
-        transfer = self.cursor.fetchall()
-        self.conn.close()
+        with self._cursor() as cursor:
+            cursor.execute(
+                'SELECT id, amount, "from", category, date, currency FROM expense'
+            )
+            expenses = cursor.fetchall()
+            cursor.execute(
+                'SELECT id, amount, "to", category, date, currency FROM income'
+            )
+            income = cursor.fetchall()
+            cursor.execute(
+                'SELECT id, amount, "from", "to", category, date, currency,'
+                " to_amount, to_currency, rate FROM transfer"
+            )
+            transfer = cursor.fetchall()
         return expenses, income, transfer
+
+    def select_income_by_date(self):
+        with self._cursor() as cursor:
+            cursor.execute(query_collection.SELECT_INCOME_BY_DATE)
+            return cursor.fetchall()
+
+    def select_expense_by_date(self):
+        with self._cursor() as cursor:
+            cursor.execute(query_collection.SELECT_EXPENSE_BY_DATE)
+            return cursor.fetchall()
+
+    def select_debts(self):
+        with self._cursor() as cursor:
+            cursor.execute(query_collection.SELECT_DEBTS)
+            return cursor.fetchall()
+
+    def select_debt(self, debt_id):
+        with self._cursor() as cursor:
+            cursor.execute(
+                "SELECT id, name, amount, description, currency FROM debt WHERE id = ?",
+                (debt_id,),
+            )
+            return cursor.fetchone()
+
+    def insert_debt_payment(self, data):
+        with self._cursor(commit=True) as cursor:
+            cursor.execute(query_collection.INSERT_DEBT_PAYMENT, data)
+        return True
+
+    def select_debt_payments(self):
+        with self._cursor() as cursor:
+            cursor.execute(query_collection.SELECT_DEBT_PAYMENTS)
+            return cursor.fetchall()
+
+    def select_debt_paid_totals(self):
+        with self._cursor() as cursor:
+            cursor.execute(query_collection.SELECT_DEBT_PAID_TOTALS)
+            return {row[0]: row[1] or 0.0 for row in cursor.fetchall()}
+
+    def upsert_exchange_rate(self, data):
+        with self._cursor(commit=True) as cursor:
+            cursor.execute(query_collection.UPSERT_EXCHANGE_RATE, data)
+        return True
+
+    def select_exchange_rates(self):
+        with self._cursor() as cursor:
+            cursor.execute(query_collection.SELECT_EXCHANGE_RATES)
+            return cursor.fetchall()
+
+    def select_latest_exchange_rates(self):
+        with self._cursor() as cursor:
+            cursor.execute(query_collection.SELECT_LATEST_EXCHANGE_RATES)
+            return cursor.fetchall()
+
+    def delete_exchange_rate(self, rate_id):
+        with self._cursor(commit=True) as cursor:
+            cursor.execute("DELETE FROM exchange_rate WHERE id = ?", (rate_id,))
+        return True
+
+    def select_settings(self):
+        with self._cursor() as cursor:
+            cursor.execute("SELECT key, value FROM app_settings")
+            return dict(cursor.fetchall())
+
+    def upsert_setting(self, key, value):
+        with self._cursor(commit=True) as cursor:
+            cursor.execute(query_collection.UPSERT_SETTING, (key, value))
+        return True

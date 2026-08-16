@@ -9,18 +9,19 @@
     .header button, .header span { color: #1677ff; font-size: 18px; background: none; border: none;}
     .title { font-size: 20px; font-weight: bold; color: #fff;}
     .section { margin: 24px 16px; }
-    .account-icon { 
+    .account-icon {
         display: flex; justify-content: center; align-items: center;
         background: #a882fc; border-radius: 18px; width: 64px; height: 64px; margin: 24px auto 12px auto;
         font-size: 38px;
     }
-    .input, .option { background: #232326; border-radius: 8px; padding: 14px; border: none; color: #fff; margin-bottom: 10px; width: 100%;}
+    .input, .option, select.input { background: #232326; border-radius: 8px; padding: 14px; border: none; color: #fff; margin-bottom: 10px; width: 100%;}
     .label { color: #aecbfa; font-size: 15px; margin-bottom: 6px; display: block;}
     .row { display: flex; align-items: center; justify-content: space-between; }
     .switch-row { display: flex; align-items: center; justify-content: space-between; margin-top: 20px;}
     .switch-label { color: #c1c1c1;}
     .switch { width: 40px; height: 22px; background: #303047; border-radius: 11px; position: relative;}
     .switch-knob { width: 18px; height: 18px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px;}
+    .status-banner { margin: 16px; padding: 12px 14px; border-radius: 8px; background: #1f3a2b; color: #b6f0c8; font-size: 14px;}
 </style>
 </head>
 <body>
@@ -30,6 +31,11 @@
             <span class="title">New account</span>
             <button type="submit">Done</button>
         </div>
+
+        {% if status %}
+        <div class="status-banner">{{ status }}</div>
+        {% endif %}
+
         <div class="section">
             <div class="account-icon">
                 <span>&#128179;</span>
@@ -37,7 +43,19 @@
             <span class="label">Account Name</span>
             <input class="input" placeholder="Account name" name="name" required>
             <small style="color:#bdbdbd;">You can add your account name here</small>
-        
+
+            <span class="label" style="margin-top:18px;">Currency</span>
+            <select class="input" name="currency" required>
+                {% for code, currency in currencies.CURRENCIES.items() %}
+                    <option value="{{ code }}" {% if code == default_currency %}selected{% endif %}>
+                        {{ currency.symbol }} {{ code }} — {{ currency.name }}
+                    </option>
+                {% endfor %}
+            </select>
+            <small style="color:#bdbdbd;">
+                Every transaction on this account is recorded in this currency, and it cannot be
+                changed later. Add a second account for a second currency.
+            </small>
         </div>
     </form>
 </body>

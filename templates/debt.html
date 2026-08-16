@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JAC Accounts - Debts</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "_styles.html" %}
+<style>
+    .debt-card { background: #22223a; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+    .debt-card.closed { opacity: 0.72; }
+    .debt-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .debt-name { font-size: 17px; font-weight: 600; color: #fff; margin: 0; }
+    .debt-desc { color: #9a9ab5; font-size: 13px; margin: 3px 0 0 0; }
+    .badge-open { background: #40331f; color: #ffc978; border-radius: 999px; padding: 3px 12px; font-size: 12px; letter-spacing: 0.4px; }
+    .badge-closed { background: #1f3a2b; color: #b6f0c8; border-radius: 999px; padding: 3px 12px; font-size: 12px; letter-spacing: 0.4px; }
+    .debt-figures { display: flex; flex-wrap: wrap; gap: 26px; margin: 14px 0 4px 0; }
+    .debt-figure .label { display: block; font-size: 12px; color: #9a9ab5; letter-spacing: 0.4px; }
+    .debt-figure .value { font-size: 16px; color: #d7d7ea; font-variant-numeric: tabular-nums; }
+    .debt-figure .value.left { color: #ffc978; font-weight: 600; }
+    .debt-figure .value.settled { color: #b6f0c8; font-weight: 600; }
+    .debt-meter { height: 6px; border-radius: 3px; background: #2f3050; overflow: hidden; margin: 12px 0 4px 0; }
+    .debt-meter span { display: block; height: 100%; background: #4a90e2; border-radius: 3px; }
+    .debt-meter span.done { background: #0ca30c; }
+    .pay-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 14px;
+                padding-top: 14px; border-top: 1px solid #2f3050; }
+    .pay-form .field { display: flex; flex-direction: column; gap: 4px; }
+    .pay-form label { font-size: 12px; color: #9a9ab5; letter-spacing: 0.4px; }
+    .pay-form input, .pay-form select {
+        background: #2f304a; color: #fff; border: 1px solid #3d3e60;
+        border-radius: 8px; padding: 7px 10px; font-size: 14px;
+    }
+    .pay-form .hint { flex-basis: 100%; color: #9a9ab5; font-size: 12px; margin: 0; }
+    .pay-history { margin-top: 12px; }
+    .pay-history summary { color: #7fb8ff; font-size: 13px; cursor: pointer; }
+    .pay-history table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+    .pay-history th, .pay-history td { text-align: left; padding: 5px 9px; border-bottom: 1px solid #2f3050; color: #c9c9de; }
+    .pay-history th { color: #9a9ab5; font-weight: 600; }
+    .debt-form { background: #22223a; border-radius: 12px; padding: 18px 20px; }
+    .debt-form .input, .debt-form select {
+        background: #2f304a; border-radius: 8px; padding: 11px; border: 1px solid #3d3e60;
+        color: #fff; margin-bottom: 10px; width: 100%;
+    }
+    .debt-form .label { color: #aecbfa; font-size: 14px; margin-bottom: 5px; display: block; }
+    .debt-summary { display: flex; flex-wrap: wrap; gap: 22px; margin-bottom: 18px; color: #d7d7ea; }
+    .debt-summary .box { background: #22223a; border-radius: 10px; padding: 12px 16px; }
+    .debt-summary .label { display: block; font-size: 12px; color: #9a9ab5; letter-spacing: 0.4px; }
+    .debt-summary .value { font-size: 18px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+<div class="content">
+    <div class="header">
+        <div class="title">Debts</div>
+    </div>
+
+    {% if status %}
+    <div class="status-banner">{{ status }}</div>
+    {% endif %}
+
+    <div class="container py-4">
+        <div class="debt-summary">
+            <div class="box">
+                <span class="label">Open</span>
+                <span class="value">{{ open_count }}</span>
+            </div>
+            <div class="box">
+                <span class="label">Closed</span>
+                <span class="value">{{ closed_count }}</span>
+            </div>
+            {% for code, amount in outstanding_by_currency.items() %}
+            <div class="box">
+                <span class="label">Still owed in {{ code }}</span>
+                <span class="value">{{ amount | money(code) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                {% for debt in debts %}
+                <div class="debt-card {{ debt.status }}">
+                    <div class="debt-top">
+                        <div>
+                            <h3 class="debt-name">{{ debt.name }}</h3>
+                            <p class="debt-desc">{{ debt.description }}</p>
+                        </div>
+                        <span class="badge-{{ debt.status }}">
+                            {{ 'Closed' if debt.status == 'closed' else 'Open' }}
+                        </span>
+                    </div>
+
+                    <div class="debt-meter">
+                        {% set share = (debt.paid / debt.amount * 100) if debt.amount else 0 %}
+                        <span class="{{ 'done' if debt.status == 'closed' else '' }}"
+                              style="width: {{ [share, 100] | min }}%;"></span>
+                    </div>
+
+                    <div class="debt-figures">
+                        <div class="debt-figure">
+                            <span class="label">Borrowed</span>
+                            <span class="value">{{ debt.amount | money(debt.currency) }}</span>
+                        </div>
+                        <div class="debt-figure">
+                            <span class="label">Paid</span>
+                            <span class="value">{{ debt.paid | money(debt.currency) }}</span>
+                        </div>
+                        <div class="debt-figure">
+                            <span class="label">Balance</span>
+                            <span class="value {{ 'settled' if debt.status == 'closed' else 'left' }}">
+                                {{ debt.outstanding | money(debt.currency) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    {% if debt.status == 'open' %}
+                    <form class="pay-form" method="POST" action="/debt/pay">
+                        <input type="hidden" name="debt_id" value="{{ debt.id }}">
+                        <div class="field">
+                            <label for="payAmount{{ debt.id }}">Pay ({{ debt.currency }})</label>
+                            <input type="number" step="0.01" min="0.01" max="{{ debt.outstanding }}"
+                                   id="payAmount{{ debt.id }}" name="amount"
+                                   placeholder="{{ '%.2f'|format(debt.outstanding) }}" required>
+                        </div>
+                        <div class="field">
+                            <label for="payDate{{ debt.id }}">Date</label>
+                            <input type="date" id="payDate{{ debt.id }}" name="date" value="{{ today }}" required>
+                        </div>
+                        <div class="field">
+                            <label for="payFrom{{ debt.id }}">Pay from</label>
+                            <select id="payFrom{{ debt.id }}" name="from_account">
+                                <option value="">Not from a tracked account</option>
+                                {% for account in accounts %}
+                                    <option value="{{ account.name }}">
+                                        {{ account.name }} ({{ account.currency }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" type="submit">Record payment</button>
+                        <p class="hint">
+                            Picking an account also records the payment as an expense from it,
+                            converted if its currency differs.
+                        </p>
+                    </form>
+                    {% endif %}
+
+                    {% if payments.get(debt.id) %}
+                    <details class="pay-history">
+                        <summary>{{ payments[debt.id] | length }} payment(s)</summary>
+                        <table>
+                            <thead>
+                                <tr><th>Date</th><th>Amount</th><th>Paid from</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in payments[debt.id] | reverse %}
+                                <tr>
+                                    <td>{{ payment.date }}</td>
+                                    <td>{{ payment.amount | money(payment.currency) }}</td>
+                                    <td>{{ payment.from_account or '—' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </details>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="debt-card">
+                    <p class="debt-desc" style="margin:0;">No debts recorded yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="col-lg-5">
+                <div class="debt-form">
+                    <h3 class="debt-name" style="margin-bottom:12px;">Add a debt</h3>
+                    <form method="POST" action="/debt/entry">
+                        <span class="label">Name</span>
+                        <input class="input" placeholder="Who or what you owe" name="name" required>
+
+                        <span class="label">Currency</span>
+                        <select name="currency" required>
+                            {% for code, currency in currencies.CURRENCIES.items() %}
+                                <option value="{{ code }}" {% if code == display_currency %}selected{% endif %}>
+                                    {{ currency.symbol }} {{ code }} — {{ currency.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+
+                        <span class="label">Amount owed</span>
+                        <input class="input" type="number" step="0.01" min="0.01"
+                               placeholder="Amount" name="amount" required>
+
+                        <span class="label">Description</span>
+                        <input class="input" placeholder="What it is for" name="description" required>
+
+                        <button class="btn btn-primary" type="submit">Add debt</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

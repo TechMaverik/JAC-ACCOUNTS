@@ -4,125 +4,71 @@
 <meta charset="UTF-8">
 <title>JAC Accounts - All transactions</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "_styles.html" %}
 <style>
-    body { background: #18181b; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
-    .sidebar {
-        width: 270px; background: #22223a; height: 100vh; float: left; padding: 10px 0 0 0; box-sizing: border-box;
-        position: fixed; left: 0; top: 0; bottom: 0;
+    /* Chart roles. The app is dark only, so these are the dark steps of the
+       validated palette, checked against this card surface. */
+    .viz-root {
+        --viz-surface: #22223a;
+        --viz-grid: #2f3050;
+        --viz-axis: #3d3e60;
+        --viz-ink: #ffffff;
+        --viz-ink-secondary: #c9c9de;
+        --viz-ink-muted: #9a9ab5;
+        --series-income: #008300;
+        --series-expense: #e66767;
+        margin-top: 42px;
     }
-    .sidebar .title { margin-left: 30px; font-size: 26px; font-weight: bold;}
-    .sidebar .menu { margin-top: 18px; }
-    .sidebar .menu a { display: block; color: #bbb; text-decoration: none; font-size: 17px; padding: 7px 30px;}
-    .sidebar .balance { margin: 30px 30px 10px 30px; font-size: 19px; color: #c2f262; }
-    .sidebar .accounts { margin: 12px 13px 0px 13px; }
-    .sidebar .account { display: flex; align-items: center; justify-content: space-between; background: #2f304a; border-radius: 9px; padding: 7px 10px; margin-bottom: 7px;}
-    .sidebar .account-icon { width: 22px; height: 22px; background:#bb61fa; border-radius: 4px; display:inline-flex; align-items:center; justify-content:center; margin-right:7px;}
-    .sidebar .account-balance { font-size: 15px; color: #f0f0f0;}
-    .content { margin-left: 290px; padding: 0;}
-    .content .header { display: flex; padding: 16px 20px; background: #232326; align-items: center;}
-    .content .title { font-size: 22px; font-weight: bold; color: #fff; }
-    .trans-list { margin: 0 28px; margin-top: 16px;}
-    .section-date { font-size: 14px; color: #aac; margin: 24px 0 6px 0;}
-    .trans { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #24243a;}
-    .trans .left { display: flex; align-items: center; justify-content: space-between; }
-    .trans .mid { display: flex; align-items: center; justify-content: space-between; margin-right: 120px;}
-    .trans .icon { width: 34px; height: 34px; border-radius: 11px; background: #39395a; display: flex; align-items:center; justify-content:center; font-size: 21px; margin-right: 17px;}
-    .trans .desc { font-size: 16px; color: #fff;}
-    .trans .amt { color: #ab3d3d; font-weight: bold; font-size: 15px;}
-    .trans .inc { color: #0bdd3cbc; font-weight: bold; font-size: 15px;}
-    .trans .tx { color: #dd0bbebc; font-weight: bold; font-size: 15px;}
-    .add-bar { position: fixed; bottom: 12px; left: 0; width: 100vw; display: flex; justify-content: flex-end; margin-left: 280px;}
-    .add-btn { background: #1781ff; color: #fff; padding: 10px 28px; margin-right: 24px; border-radius: 28px; font-size:16px; border: none;}
-
-    .trans-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: Arial, sans-serif;
-    margin-top: 1em;
-}
-
-.trans-table thead {
-    background-color: #4a90e2;
-    color: white;
-}
-
-.trans-table th, .trans-table td {
-    padding: 10px 15px;
-    border: 1px solid #ddd;
-    text-align: left;
-}
-
-.trans-table tbody tr:nth-child(even) {
-    background-color: #000000;
-}
-
-.trans-table tbody tr:hover {
-    background-color: #686b6d;
-}
-
-.trans-table .amt {
-    color: #d9534f; /* red for expenses */
-    font-weight: bold;
-}
-
-.trans-table .inc {
-    color: #5cb85c; /* green for income */
-    font-weight: bold;
-}
-
-.trans-table .tx {
-    color: #f0ad4e; /* orange for transfers */
-    font-weight: bold;
-}
-    
-
-
+    .viz-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-bottom: 14px; }
+    .viz-filters .field { display: flex; flex-direction: column; gap: 4px; }
+    .viz-filters label { font-size: 12px; color: var(--viz-ink-muted); letter-spacing: 0.4px; }
+    .viz-filters select {
+        background: #2f304a; color: var(--viz-ink); border: 1px solid var(--viz-axis);
+        border-radius: 8px; padding: 7px 10px; font-size: 14px; min-width: 150px;
+    }
+    .viz-card { background: var(--viz-surface); border-radius: 12px; padding: 20px 22px 16px 22px; }
+    .viz-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .viz-title { font-size: 17px; font-weight: 600; color: var(--viz-ink); margin: 0; }
+    .viz-sub { font-size: 13px; color: var(--viz-ink-muted); margin: 4px 0 0 0; }
+    .viz-legend { display: flex; gap: 16px; align-items: center; }
+    .viz-legend .key { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--viz-ink-secondary); }
+    .viz-legend .stroke { width: 18px; height: 2px; border-radius: 1px; }
+    .viz-plot { position: relative; margin-top: 10px; }
+    .viz-plot svg { width: 100%; height: auto; display: block; overflow: visible; }
+    .viz-plot svg:focus-visible { outline: 2px solid #7fb8ff; outline-offset: 4px; border-radius: 6px; }
+    .viz-tooltip {
+        position: absolute; pointer-events: none; z-index: 5; min-width: 148px;
+        background: #12121f; border: 1px solid var(--viz-axis); border-radius: 9px;
+        padding: 9px 11px; box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    }
+    .viz-tooltip .when { font-size: 12px; color: var(--viz-ink-muted); margin-bottom: 6px; }
+    .viz-tooltip .row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .viz-tooltip .stroke { width: 14px; height: 2px; border-radius: 1px; flex: none; }
+    .viz-tooltip .value { font-size: 14px; font-weight: 600; color: var(--viz-ink); font-variant-numeric: tabular-nums; }
+    .viz-tooltip .name { font-size: 12px; color: var(--viz-ink-muted); }
+    .viz-empty { color: var(--viz-ink-muted); font-size: 14px; padding: 34px 0; text-align: center; }
+    .viz-note { color: #ffc978; font-size: 12px; margin-top: 10px; }
+    .viz-table { margin-top: 14px; }
+    .viz-table summary { color: #7fb8ff; font-size: 13px; cursor: pointer; }
+    .viz-table table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+    .viz-table th, .viz-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--viz-grid); color: var(--viz-ink-secondary); }
+    .viz-table th { color: var(--viz-ink-muted); font-weight: 600; }
+    .viz-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
-<div class="sidebar">
-    <div class="title">JAC Accounts</div>
-    <div class="menu">
-        <!-- <a href="#">Export Data</a>
-        <a href="#">Analytics</a> -->
-       
-        
-        <a href="/" style="color:#c2f262;">Balance <span style="font-size:15px;">₹{{ total_balance }}</span></a>
-        <a href="/account">New Bank Account</a>
-        <a href="/transaction/expense">Add transactions</a>       
-        <a href="/liability">Liabilities</a>
-        <a href="/expenses">All Expenses History</a> 
-        <a href="/incomes">All Income Sources</a>
-        <a href="/transfers">All Transfer History</a>        
-        <a href="/settings">Settings</a>
-        
-    </div>
-    
-    <div class="accounts">
-        <!-- {% for account in bank_name %}
-        <div class="account"><span><span class="account-icon">&#128179;</span> {{ account }} </span> <span class="account-balance">₹{{ account[2] }}</span></div>
-        {% endfor %} -->
-
-        {% for account_name, balance in account_details.items() %}
-    <div class="account">
-        <span><span class="account-icon">&#128179;</span> {{ account_name }} </span> 
-        <span class="account-balance">₹{{ "%.2f"|format(balance) }}</span>
-    </div>
-{% endfor %}
-<div class="accounts">Developed by TechMaverik</div>
-
-        
-    </div>
-</div>
+{% include "_sidebar.html" %}
 <div class="content">
     <div class="header">
-    <div class="title">Recommendations</div>
-</div>
-
-
+        <div class="title">Recommendations</div>
+    </div>
 
 <div class="container py-5">
- 
+
+  <p class="text-secondary">
+    Split of your total balance, converted into
+    <strong>{{ currencies.label(display_currency) }}</strong>.
+  </p>
 
   <div class="row g-4">
     <!-- Emergency Fund -->
@@ -135,7 +81,7 @@
           </p>
         </div>
         <div class="card-footer bg-transparent">
-          <strong>Amount:</strong> ₹{{ "%.2f"|format(total_balance*30/100) }}
+          <strong>Amount:</strong> {{ (total_balance * 30 / 100) | money(display_currency) }}
         </div>
       </div>
     </div>
@@ -150,7 +96,7 @@
           </p>
         </div>
         <div class="card-footer bg-transparent">
-          <strong>Amount:</strong>₹{{ "%.2f"|format(total_balance*20/100) }}
+          <strong>Amount:</strong> {{ (total_balance * 20 / 100) | money(display_currency) }}
         </div>
       </div>
     </div>
@@ -165,7 +111,7 @@
           </p>
         </div>
         <div class="card-footer bg-transparent">
-          <strong>Amount:</strong>₹{{ "%.2f"|format(total_balance*30/100) }}
+          <strong>Amount:</strong> {{ (total_balance * 30 / 100) | money(display_currency) }}
         </div>
       </div>
     </div>
@@ -180,15 +126,534 @@
           </p>
         </div>
         <div class="card-footer bg-transparent">
-          <strong>Amount:</strong> ₹{{ "%.2f"|format(total_balance*20/100) }}
+          <strong>Amount:</strong> {{ (total_balance * 20 / 100) | money(display_currency) }}
         </div>
       </div>
     </div>
   </div>
+
+  {% if totals_by_currency | length > 1 %}
+  <div class="row mt-5">
+    <div class="col-12">
+      <h5 class="text-white">Holdings by currency</h5>
+      <table class="trans-table">
+        <thead>
+          <tr>
+            <th>Currency</th>
+            <th>Balance</th>
+            <th>In {{ display_currency }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for code, amount in totals_by_currency.items() %}
+          <tr>
+            <td>{{ currencies.label(code) }}</td>
+            <td>{{ amount | money(code) }}</td>
+            <td>
+              {% if code == display_currency %}
+                {{ amount | money(display_currency) }}
+              {% elif rates and rates.get(code ~ '>' ~ display_currency) %}
+                {{ (amount * rates[code ~ '>' ~ display_currency]) | money(display_currency) }}
+              {% else %}
+                <a href="/exchange">rate needed</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Income and expense trend -->
+  <div class="viz-root">
+    <div class="viz-filters">
+      <div class="field">
+        <label for="vizRange">Date range</label>
+        <select id="vizRange">
+          <option value="0" selected>All time</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="365">Last 12 months</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="vizGrain">Group by</label>
+        <select id="vizGrain">
+          <option value="day" selected>Day</option>
+          <option value="month">Month</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="viz-card">
+      <div class="viz-head">
+        <div>
+          <h3 class="viz-title">Income and expense trend</h3>
+          <p class="viz-sub">
+            Totals per date in {{ currencies.label(trend.currency) }}.
+            Transfers between your own accounts are excluded.
+          </p>
+        </div>
+        <div class="viz-legend">
+          <span class="key"><span class="stroke" style="background: var(--series-income);"></span> Income</span>
+          <span class="key"><span class="stroke" style="background: var(--series-expense);"></span> Expense</span>
+        </div>
+      </div>
+
+      <div class="viz-plot" id="vizPlot">
+        <svg id="vizChart" viewBox="0 0 820 300" preserveAspectRatio="xMidYMid meet"
+             role="img" tabindex="0"
+             aria-label="Line chart of income and expense totals over time. Use the arrow keys to read each date, or open the table view below."></svg>
+        <div class="viz-tooltip" id="vizTooltip" hidden></div>
+        <div class="viz-empty" id="vizEmpty" hidden>No transactions yet — add one to see the trend.</div>
+      </div>
+
+      {% if trend.unconverted %}
+      <p class="viz-note">
+        {{ trend.unconverted | join(', ') }} amounts are missing a rate to
+        {{ trend.currency }} and are not plotted.
+        <a href="/exchange" style="color:#ffd79a;">Add an exchange rate</a>.
+      </p>
+      {% endif %}
+
+      <details class="viz-table">
+        <summary>Table view</summary>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th style="text-align:right;">Income</th>
+              <th style="text-align:right;">Expense</th>
+            </tr>
+          </thead>
+          <tbody id="vizTableBody"></tbody>
+        </table>
+      </details>
+    </div>
+  </div>
 </div>
 
+</div>
 
-<!-- <div class="add-bar"><button class="add-btn">+ Add transaction</button></div> -->
+<script>
+(function () {
+    var POINTS = {{ trend.points | tojson }};
+    var SYMBOL = {{ trend.symbol | tojson }};
 
+    var SERIES = [
+        { key: "income", name: "Income", color: "#008300" },
+        { key: "expense", name: "Expense", color: "#e66767" }
+    ];
+
+    var SVG_NS = "http://www.w3.org/2000/svg";
+    var W = 820, H = 300;
+    var M = { top: 20, right: 110, bottom: 44, left: 68 };
+    var PLOT_W = W - M.left - M.right;
+    var PLOT_H = H - M.top - M.bottom;
+
+    var chart = document.getElementById("vizChart");
+    var tooltip = document.getElementById("vizTooltip");
+    var empty = document.getElementById("vizEmpty");
+    var tableBody = document.getElementById("vizTableBody");
+    var rangeSelect = document.getElementById("vizRange");
+    var grainSelect = document.getElementById("vizGrain");
+
+    var view = [];      // the rows the chart and table both read
+    var geometry = null;
+    var cursor = null;  // index under the pointer / keyboard caret
+
+    function parseDay(iso) {
+        var parts = String(iso).split("-");
+        return Date.UTC(+parts[0], (+parts[1] || 1) - 1, +parts[2] || 1);
+    }
+
+    function money(value) {
+        return SYMBOL + value.toLocaleString(undefined, {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        });
+    }
+
+    function compact(value) {
+        var abs = Math.abs(value);
+        if (abs >= 1000000) { return SYMBOL + trim(value / 1000000) + "M"; }
+        if (abs >= 1000) { return SYMBOL + trim(value / 1000) + "K"; }
+        return SYMBOL + trim(value);
+    }
+
+    function trim(value) {
+        return (Math.round(value * 10) / 10).toString();
+    }
+
+    var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    function labelFor(row, long) {
+        var d = new Date(row.time);
+        if (row.grain === "month") {
+            return MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear();
+        }
+        var short = d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+        return long ? short + " " + d.getUTCFullYear() : short;
+    }
+
+    function buildView() {
+        var days = Number(rangeSelect.value);
+        var grain = grainSelect.value;
+        var rows = POINTS.slice();
+
+        if (days > 0) {
+            var cutoff = Date.now() - days * 86400000;
+            rows = rows.filter(function (row) { return parseDay(row.date) >= cutoff; });
+        }
+
+        if (grain === "month") {
+            var buckets = {};
+            var order = [];
+            rows.forEach(function (row) {
+                var key = String(row.date).slice(0, 7);
+                if (!buckets[key]) {
+                    buckets[key] = { key: key, income: 0, expense: 0, grain: "month",
+                                     time: parseDay(key + "-01") };
+                    order.push(key);
+                }
+                buckets[key].income += row.income;
+                buckets[key].expense += row.expense;
+            });
+            rows = order.map(function (key) {
+                var bucket = buckets[key];
+                bucket.income = Math.round(bucket.income * 100) / 100;
+                bucket.expense = Math.round(bucket.expense * 100) / 100;
+                return bucket;
+            });
+        } else {
+            rows = rows.map(function (row) {
+                return { key: row.date, income: row.income, expense: row.expense,
+                         grain: "day", time: parseDay(row.date) };
+            });
+        }
+
+        rows.sort(function (a, b) { return a.time - b.time; });
+        return rows;
+    }
+
+    function niceCeiling(value) {
+        if (value <= 0) { return 1; }
+        var exponent = Math.floor(Math.log10(value));
+        var base = Math.pow(10, exponent);
+        var fraction = value / base;
+        var stepped = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 2.5 ? 2.5
+                    : fraction <= 5 ? 5 : 10;
+        return stepped * base;
+    }
+
+    function element(name, attrs) {
+        var node = document.createElementNS(SVG_NS, name);
+        Object.keys(attrs).forEach(function (key) {
+            node.setAttribute(key, attrs[key]);
+        });
+        return node;
+    }
+
+    function textNode(x, y, value, fill, anchor, size) {
+        var node = element("text", {
+            x: x, y: y, fill: fill, "text-anchor": anchor || "start",
+            "font-size": size || 12, "font-family": "system-ui, -apple-system, 'Segoe UI', sans-serif"
+        });
+        node.textContent = value;
+        return node;
+    }
+
+    function render() {
+        view = buildView();
+        chart.textContent = "";
+        hideTooltip();
+        renderTable();
+
+        if (!view.length) {
+            chart.setAttribute("hidden", "hidden");
+            empty.hidden = false;
+            geometry = null;
+            return;
+        }
+        chart.removeAttribute("hidden");
+        empty.hidden = true;
+
+        var peak = 0;
+        view.forEach(function (row) {
+            peak = Math.max(peak, row.income, row.expense);
+        });
+        var top = niceCeiling(peak || 1);
+
+        var single = view.length === 1;
+        var minTime = view[0].time;
+        var maxTime = view[view.length - 1].time;
+        var span = maxTime - minTime;
+
+        function xOf(row, index) {
+            if (single) { return M.left + PLOT_W / 2; }
+            if (!span) { return M.left + (PLOT_W * index) / (view.length - 1); }
+            return M.left + (PLOT_W * (row.time - minTime)) / span;
+        }
+        function yOf(value) {
+            return M.top + PLOT_H - (PLOT_H * value) / top;
+        }
+
+        var xs = view.map(xOf);
+        geometry = { xs: xs, yOf: yOf, top: top };
+
+        // Gridlines and y ticks - hairline, solid, recessive.
+        for (var t = 0; t <= 4; t++) {
+            var value = (top * t) / 4;
+            var y = yOf(value);
+            chart.appendChild(element("line", {
+                x1: M.left, y1: y, x2: M.left + PLOT_W, y2: y,
+                stroke: t === 0 ? "#3d3e60" : "#2f3050", "stroke-width": 1
+            }));
+            chart.appendChild(textNode(M.left - 10, y + 4, compact(value), "#9a9ab5", "end", 11));
+        }
+
+        // X ticks - at most six, always including the last point.
+        var stride = Math.max(1, Math.ceil(view.length / 6));
+        view.forEach(function (row, index) {
+            if (index % stride !== 0 && index !== view.length - 1) { return; }
+            chart.appendChild(textNode(xs[index], M.top + PLOT_H + 22, labelFor(row),
+                                       "#9a9ab5", "middle", 11));
+        });
+
+        // Series lines.
+        SERIES.forEach(function (series) {
+            var path = view.map(function (row, index) {
+                return (index ? "L" : "M") + xs[index] + " " + yOf(row[series.key]);
+            }).join(" ");
+            if (!single) {
+                chart.appendChild(element("path", {
+                    d: path, fill: "none", stroke: series.color, "stroke-width": 2,
+                    "stroke-linejoin": "round", "stroke-linecap": "round"
+                }));
+            }
+            // Point markers stay readable only while the points are sparse;
+            // the end marker is always drawn.
+            if (view.length <= 30) {
+                view.forEach(function (row, index) {
+                    chart.appendChild(element("circle", {
+                        cx: xs[index], cy: yOf(row[series.key]), r: 4,
+                        fill: series.color, stroke: "#22223a", "stroke-width": 2
+                    }));
+                });
+            } else {
+                var last = view.length - 1;
+                chart.appendChild(element("circle", {
+                    cx: xs[last], cy: yOf(view[last][series.key]), r: 4,
+                    fill: series.color, stroke: "#22223a", "stroke-width": 2
+                }));
+            }
+        });
+
+        renderEndLabels(xs, yOf);
+
+        // Crosshair, drawn above the marks and moved on hover.
+        var crosshair = element("line", {
+            x1: 0, y1: M.top, x2: 0, y2: M.top + PLOT_H,
+            stroke: "#6f6f9c", "stroke-width": 1, opacity: 0
+        });
+        crosshair.setAttribute("id", "vizCrosshair");
+        chart.appendChild(crosshair);
+
+        SERIES.forEach(function (series) {
+            var dot = element("circle", {
+                cx: 0, cy: 0, r: 5, fill: series.color,
+                stroke: "#22223a", "stroke-width": 2, opacity: 0
+            });
+            dot.setAttribute("id", "vizDot-" + series.key);
+            chart.appendChild(dot);
+        });
+
+        // One transparent capture rect - the reader aims at a date, not a line.
+        chart.appendChild(element("rect", {
+            x: M.left, y: M.top, width: PLOT_W, height: PLOT_H,
+            fill: "transparent", "pointer-events": "all", id: "vizCapture"
+        }));
+    }
+
+    function renderEndLabels(xs, yOf) {
+        var last = view.length - 1;
+        var placements = SERIES.map(function (series) {
+            return { series: series, y: yOf(view[last][series.key]),
+                     value: view[last][series.key] };
+        }).sort(function (a, b) { return a.y - b.y; });
+
+        // Converging lines get leader lines rather than labels stacked on top
+        // of each other.
+        var collided = Math.abs(placements[0].y - placements[1].y) < 15;
+        if (collided) {
+            var middle = (placements[0].y + placements[1].y) / 2;
+            placements[0].labelY = middle - 9;
+            placements[1].labelY = middle + 9;
+        } else {
+            placements.forEach(function (placement) { placement.labelY = placement.y; });
+        }
+
+        placements.forEach(function (placement) {
+            if (collided) {
+                chart.appendChild(element("line", {
+                    x1: xs[last] + 5, y1: placement.y,
+                    x2: xs[last] + 11, y2: placement.labelY,
+                    stroke: "#4a4b70", "stroke-width": 1
+                }));
+            }
+            chart.appendChild(textNode(xs[last] + 13, placement.labelY + 4,
+                                       money(placement.value), "#c9c9de", "start", 12));
+        });
+    }
+
+    function renderTable() {
+        tableBody.textContent = "";
+        view.forEach(function (row) {
+            var tr = document.createElement("tr");
+            var when = document.createElement("td");
+            when.textContent = labelFor(row, true);
+            var income = document.createElement("td");
+            income.className = "num";
+            income.textContent = money(row.income);
+            var expense = document.createElement("td");
+            expense.className = "num";
+            expense.textContent = money(row.expense);
+            tr.appendChild(when);
+            tr.appendChild(income);
+            tr.appendChild(expense);
+            tableBody.appendChild(tr);
+        });
+    }
+
+    function svgPoint(event) {
+        var ctm = chart.getScreenCTM();
+        if (!ctm) { return null; }
+        var point = chart.createSVGPoint();
+        point.x = event.clientX;
+        point.y = event.clientY;
+        return point.matrixTransform(ctm.inverse());
+    }
+
+    function nearestIndex(x) {
+        var best = 0;
+        var bestGap = Infinity;
+        geometry.xs.forEach(function (position, index) {
+            var gap = Math.abs(position - x);
+            if (gap < bestGap) { bestGap = gap; best = index; }
+        });
+        return best;
+    }
+
+    function showAt(index) {
+        if (!geometry || !view.length) { return; }
+        cursor = index;
+        var row = view[index];
+        var x = geometry.xs[index];
+
+        var crosshair = document.getElementById("vizCrosshair");
+        crosshair.setAttribute("x1", x);
+        crosshair.setAttribute("x2", x);
+        crosshair.setAttribute("opacity", 1);
+
+        SERIES.forEach(function (series) {
+            var dot = document.getElementById("vizDot-" + series.key);
+            dot.setAttribute("cx", x);
+            dot.setAttribute("cy", geometry.yOf(row[series.key]));
+            dot.setAttribute("opacity", 1);
+        });
+
+        tooltip.textContent = "";
+        var when = document.createElement("div");
+        when.className = "when";
+        when.textContent = labelFor(row, true);
+        tooltip.appendChild(when);
+
+        SERIES.forEach(function (series) {
+            var line = document.createElement("div");
+            line.className = "row";
+            var key = document.createElement("span");
+            key.className = "stroke";
+            key.style.background = series.color;
+            var value = document.createElement("span");
+            value.className = "value";
+            value.textContent = money(row[series.key]);
+            var name = document.createElement("span");
+            name.className = "name";
+            name.textContent = series.name;
+            line.appendChild(key);
+            line.appendChild(value);
+            line.appendChild(name);
+            tooltip.appendChild(line);
+        });
+
+        tooltip.hidden = false;
+        position(tooltip, x, geometry.yOf(Math.max(row.income, row.expense)));
+    }
+
+    function position(node, svgX, svgY) {
+        var ctm = chart.getScreenCTM();
+        if (!ctm) { return; }
+        var point = chart.createSVGPoint();
+        point.x = svgX;
+        point.y = svgY;
+        var screen = point.matrixTransform(ctm);
+        var host = chart.parentNode.getBoundingClientRect();
+        var left = screen.x - host.left + 14;
+        var topOffset = screen.y - host.top - 10;
+        if (left + node.offsetWidth > host.width) {
+            left = screen.x - host.left - node.offsetWidth - 14;
+        }
+        node.style.left = Math.max(0, left) + "px";
+        node.style.top = Math.max(0, topOffset) + "px";
+    }
+
+    function hideTooltip() {
+        tooltip.hidden = true;
+        cursor = null;
+        var crosshair = document.getElementById("vizCrosshair");
+        if (crosshair) { crosshair.setAttribute("opacity", 0); }
+        SERIES.forEach(function (series) {
+            var dot = document.getElementById("vizDot-" + series.key);
+            if (dot) { dot.setAttribute("opacity", 0); }
+        });
+    }
+
+    chart.addEventListener("pointermove", function (event) {
+        if (!geometry) { return; }
+        var point = svgPoint(event);
+        if (!point) { return; }
+        showAt(nearestIndex(point.x));
+    });
+    chart.addEventListener("pointerleave", hideTooltip);
+    chart.addEventListener("blur", hideTooltip);
+
+    // Keyboard reads the same values as hover.
+    chart.addEventListener("keydown", function (event) {
+        if (!geometry) { return; }
+        if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+            var step = event.key === "ArrowRight" ? 1 : -1;
+            var next = cursor === null
+                ? (step > 0 ? 0 : view.length - 1)
+                : Math.min(view.length - 1, Math.max(0, cursor + step));
+            showAt(next);
+            event.preventDefault();
+        } else if (event.key === "Home") {
+            showAt(0); event.preventDefault();
+        } else if (event.key === "End") {
+            showAt(view.length - 1); event.preventDefault();
+        } else if (event.key === "Escape") {
+            hideTooltip();
+        }
+    });
+
+    rangeSelect.addEventListener("change", render);
+    grainSelect.addEventListener("change", render);
+    window.addEventListener("resize", function () { hideTooltip(); });
+
+    render();
+})();
+</script>
 </body>
 </html>

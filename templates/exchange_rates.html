@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JAC Accounts - Exchange rates</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include "_styles.html" %}
+</head>
+<body>
+{% include "_sidebar.html" %}
+<div class="content">
+    <div class="header">
+        <div class="title">Exchange Rates</div>
+    </div>
+
+    {% if status %}
+    <div class="status-banner">{{ status }}</div>
+    {% endif %}
+
+    <div class="container py-4">
+        <div class="row g-4">
+            <div class="col-md-5">
+                <h5 class="text-white">Add a rate</h5>
+                <p class="text-secondary" style="font-size:14px;">
+                    Enter how many units of the second currency one unit of the first buys.
+                    The newest date for a pair is the one used everywhere else.
+                </p>
+                <form method="POST" action="/exchange/entry">
+                    <label class="form-label text-secondary" for="baseCurrency">1 unit of</label>
+                    <select class="form-select mb-3" id="baseCurrency" name="base_currency" required>
+                        {% for code, currency in currencies.CURRENCIES.items() %}
+                            <option value="{{ code }}">{{ currency.symbol }} {{ code }} — {{ currency.name }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label class="form-label text-secondary" for="quoteCurrency">buys, in</label>
+                    <select class="form-select mb-3" id="quoteCurrency" name="quote_currency" required>
+                        {% for code, currency in currencies.CURRENCIES.items() %}
+                            <option value="{{ code }}"
+                                {% if loop.index == 2 %}selected{% endif %}>
+                                {{ currency.symbol }} {{ code }} — {{ currency.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <label class="form-label text-secondary" for="rateInput">Rate</label>
+                    <input class="form-control mb-3" id="rateInput" name="rate" type="number"
+                           step="any" min="0" placeholder="e.g. 55.20" required>
+
+                    <label class="form-label text-secondary" for="rateDate">Effective date</label>
+                    <input class="form-control mb-3" id="rateDate" name="date" type="date"
+                           value="{{ today }}" required>
+
+                    <button class="btn btn-primary" type="submit">Save rate</button>
+                </form>
+            </div>
+
+            <div class="col-md-7">
+                <h5 class="text-white">Rates in use</h5>
+                <table class="trans-table">
+                    <thead>
+                        <tr>
+                            <th>Pair</th>
+                            <th>Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for base, quote in currencies.pairs() %}
+                        <tr>
+                            <td>1 {{ base }} → {{ quote }}</td>
+                            <td>
+                                {% if rates.get(base ~ '>' ~ quote) %}
+                                    {{ "%g"|format(rates[base ~ '>' ~ quote]) }} {{ quote }}
+                                {% else %}
+                                    <span class="currency-code">not set</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <h5 class="text-white mt-4">History</h5>
+                <table class="trans-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Pair</th>
+                            <th>Rate</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rate in exchange_rates %}
+                        <tr>
+                            <td>{{ rate.date }}</td>
+                            <td>1 {{ rate.base_currency }} → {{ rate.quote_currency }}</td>
+                            <td>{{ "%g"|format(rate.rate) }}</td>
+                            <td>
+                                <form method="POST" action="/exchange/delete">
+                                    <input type="hidden" name="rate_id" value="{{ rate.id }}">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4">No exchange rates entered yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

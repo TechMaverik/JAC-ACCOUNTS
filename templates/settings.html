@@ -2,35 +2,86 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>New account</title>
+<title>Settings</title>
 <style>
     body { background: #18181b; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0;}
     .header { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #232326;}
     .header button, .header span { color: #1677ff; font-size: 18px; background: none; border: none;}
     .title { font-size: 20px; font-weight: bold; color: #fff;}
-    .section { margin: 24px 16px; }
-    .account-icon { 
-        display: flex; justify-content: center; align-items: center;
-        background: #a882fc; border-radius: 18px; width: 64px; height: 64px; margin: 24px auto 12px auto;
-        font-size: 38px;
-    }
-    .input, .option { background: #232326; border-radius: 8px; padding: 14px; border: none; color: #fff; margin-bottom: 10px; width: 100%;}
+    .section { margin: 24px 16px; max-width: 520px; }
+    .input, .option, select.input { background: #232326; border-radius: 8px; padding: 14px; border: none; color: #fff; margin-bottom: 10px; width: 100%;}
     .label { color: #aecbfa; font-size: 15px; margin-bottom: 6px; display: block;}
-    .row { display: flex; align-items: center; justify-content: space-between; }
-    .switch-row { display: flex; align-items: center; justify-content: space-between; margin-top: 20px;}
-    .switch-label { color: #c1c1c1;}
-    .switch { width: 40px; height: 22px; background: #303047; border-radius: 11px; position: relative;}
-    .switch-knob { width: 18px; height: 18px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px;}
+    .hint { color: #9a9ab5; font-size: 13px; }
+    .card { background: #22223a; border-radius: 12px; padding: 18px; margin-bottom: 18px; }
+    .card h3 { margin: 0 0 6px 0; font-size: 17px; }
+    .danger { color: #ff8a8a; }
+    .btn-primary-like { background: #1781ff; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 15px;}
+    .btn-danger-like { background: #7a2020; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 15px;}
+    .status-banner { margin: 16px; padding: 12px 14px; border-radius: 8px; background: #1f3a2b; color: #b6f0c8; font-size: 14px;}
+    .rate-line { display: flex; justify-content: space-between; padding: 5px 0; color: #d7d7ea; font-size: 14px;}
 </style>
 </head>
 <body>
-    <form method="POST" action="/settings/delete">
-        <div class="header">
-            <button class="btn btn-link p-0" onclick="window.location.href='/'">Cancel</button>
-            <span class="title">DELETE ALL ENTRIES</span>
-            <button type="submit">Proceed</button>
+    <div class="header">
+        <button type="button" onclick="window.location.href='/'">Back</button>
+        <span class="title">Settings</span>
+        <span></span>
+    </div>
+
+    {% if status %}
+    <div class="status-banner">{{ status }}</div>
+    {% endif %}
+
+    <div class="section">
+        <div class="card">
+            <h3>Display currency</h3>
+            <p class="hint">
+                Balances and recommendations are converted into this currency. Each account
+                still keeps its own currency.
+            </p>
+            <form method="POST" action="/settings/display-currency">
+                <span class="label">Show totals in</span>
+                <select class="input" name="display_currency">
+                    {% for code, currency in currencies.CURRENCIES.items() %}
+                        <option value="{{ code }}" {% if code == display_currency %}selected{% endif %}>
+                            {{ currency.symbol }} {{ code }} — {{ currency.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <input type="hidden" name="next" value="/settings">
+                <button class="btn-primary-like" type="submit">Save</button>
+            </form>
         </div>
-      
-    </form>
+
+        <div class="card">
+            <h3>Exchange rates</h3>
+            {% for base, quote in currencies.pairs() %}
+            <div class="rate-line">
+                <span>1 {{ base }} → {{ quote }}</span>
+                <span>
+                    {% if rates.get(base ~ '>' ~ quote) %}
+                        {{ "%g"|format(rates[base ~ '>' ~ quote]) }} {{ quote }}
+                    {% else %}
+                        not set
+                    {% endif %}
+                </span>
+            </div>
+            {% endfor %}
+            <p class="hint" style="margin-top:10px;">
+                <a href="/exchange" style="color:#7fb8ff;">Manage exchange rates</a>
+            </p>
+        </div>
+
+        <div class="card">
+            <h3 class="danger">Delete all entries</h3>
+            <p class="hint">
+                Removes every account, expense, income and transfer. Exchange rates and this
+                currency setting are kept.
+            </p>
+            <form method="POST" action="/settings/delete">
+                <button class="btn-danger-like" type="submit">Delete everything</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

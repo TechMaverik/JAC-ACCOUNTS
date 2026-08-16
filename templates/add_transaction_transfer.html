@@ -27,51 +27,78 @@
         .category span { color: #fff; }
         .extra { color: #c1c1c1; margin-bottom: 8px;}
         .note-link { color: #1677ff; display: block; margin-top: 7px;}
+        .status-banner { margin: 16px; padding: 12px 14px; border-radius: 8px; background: #1f3a2b; color: #b6f0c8; font-size: 14px;}
+        .currency-hint { color: #9a9ab5; font-size: 13px; }
+        .conversion {
+            background: #232326; border-radius: 8px; padding: 14px; margin-bottom: 16px;
+            border: 1px solid #34345a;
+        }
+        .conversion .received { font-size: 18px; color: #c2f262; }
+        .conversion .missing { color: #ffc978; font-size: 13px; }
     </style>
 </head>
 <body>
     <form method="POST" action="/transaction/transfer/entry">
     <div class="header">
-        <button class="btn btn-link p-0" onclick="window.location.href='/'">Cancel</button>
+        <button type="button" class="btn btn-link p-0" onclick="window.location.href='/'">Cancel</button>
         <span class="title">Add transaction</span>
-        <button class="btn btn-link p-0" style="opacity: 0.4;">Submit</button>
+        <button type="submit" class="btn btn-link p-0" style="opacity: 0.4;">Submit</button>
     </div>
     <div class="tab section">
-        <button class="btn btn-dark flex-fill me-1" onclick="window.location.href='expense'">Expense</button>
-        <button class="btn btn-dark flex-fill me-1" onclick="window.location.href='income'">Income</button>
-        <button class="active btn btn-dark flex-fill" onclick="window.location.href='transfer'">Transfer</button>
+        <button type="button" class="btn btn-dark flex-fill me-1" onclick="window.location.href='/transaction/expense'">Expense</button>
+        <button type="button" class="btn btn-dark flex-fill me-1" onclick="window.location.href='/transaction/income'">Income</button>
+        <button type="button" class="active btn btn-dark flex-fill" onclick="window.location.href='/transaction/transfer'">Transfer</button>
     </div>
+
+    {% if status %}
+    <div class="status-banner">{{ status }}</div>
+    {% endif %}
+
     <div class="section">
-        <label class="label" for="amountInput">Amount</label>
-        <input type="text" id="amountInput" class="form-control mb-3" placeholder="Enter amount" name="amount" required>
-
-        <label class="label" for="fromSelect">To</label>
-        <div class="d-flex justify-content-between align-items-center mb-3" style="background:#232326; border-radius:0.5rem; padding:10px;">
-            <div class="d-flex align-items-center gap-2">
-                <span style="font-size:20px;">&#128179;</span>
-                <select id="fromSelect" class="form-select bg-transparent border-0 text-black" name="from_account" required>
-                    {% for account in account_details %}
-                        <option> {{ account }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <span style="color: #ccc; font-size: 24px;">&#8250;</span>
-        </div>
-
         <label class="label" for="fromSelect">From</label>
         <div class="d-flex justify-content-between align-items-center mb-3" style="background:#232326; border-radius:0.5rem; padding:10px;">
             <div class="d-flex align-items-center gap-2">
                 <span style="font-size:20px;">&#128179;</span>
-                <select id="fromSelect" class="form-select bg-transparent border-0 text-black" name="to_account" required>
-                    {% for account in account_details %}
-                        <option> {{ account }}</option>
+                <select id="fromSelect" class="form-select bg-transparent border-0 text-black" name="from_account" required>
+                    {% for account in accounts %}
+                        <option value="{{ account.name }}">{{ account.name }} ({{ account.currency }})</option>
                     {% endfor %}
                 </select>
             </div>
             <span style="color: #ccc; font-size: 24px;">&#8250;</span>
         </div>
 
-        
+        <label class="label" for="toSelect">To</label>
+        <div class="d-flex justify-content-between align-items-center mb-3" style="background:#232326; border-radius:0.5rem; padding:10px;">
+            <div class="d-flex align-items-center gap-2">
+                <span style="font-size:20px;">&#128179;</span>
+                <select id="toSelect" class="form-select bg-transparent border-0 text-black" name="to_account" required>
+                    {% for account in accounts %}
+                        <option value="{{ account.name }}">{{ account.name }} ({{ account.currency }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <span style="color: #ccc; font-size: 24px;">&#8250;</span>
+        </div>
+
+        <label class="label" for="amountInput">Amount sent</label>
+        <div class="input-group mb-1">
+            <span class="input-group-text" id="currencySymbol">{{ currencies.symbol(display_currency) }}</span>
+            <input type="text" id="amountInput" class="form-control" placeholder="Enter amount" name="amount" required>
+        </div>
+        <p class="currency-hint mb-3" id="currencyHint">
+            Taken from the sending account in its own currency.
+        </p>
+
+        <div class="conversion" id="conversionBox" style="display:none;">
+            <label class="label" for="rateInput">Exchange rate</label>
+            <div class="input-group mb-2">
+                <span class="input-group-text" id="ratePrefix">1</span>
+                <input type="number" step="any" min="0" id="rateInput" name="rate" class="form-control" placeholder="Rate">
+            </div>
+            <p class="currency-hint" id="rateHint"></p>
+            <div class="received" id="receivedLine"></div>
+        </div>
 
         <label class="label" for="categorySelect">Category</label>
         <div class="category mb-3">
@@ -82,12 +109,75 @@
             </select>
         </div>
 
-       
         <label class="extra" for="dateInput">Date</label>
-        <input type="date" id="dateInput" name="date" class="form-control bg-dark text-white border-0" required>
+        <input type="date" id="dateInput" name="date" value="{{ today }}" class="form-control bg-dark text-white border-0" required>
     </div>
     </form>
     <!-- Bootstrap JS Bundle (includes Popper) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const ACCOUNT_CURRENCIES = {{ account_currencies | tojson }};
+        const RATES = {{ rates | tojson }};
+
+        const fromSelect = document.getElementById("fromSelect");
+        const toSelect = document.getElementById("toSelect");
+        const amountInput = document.getElementById("amountInput");
+        const rateInput = document.getElementById("rateInput");
+        const currencySymbol = document.getElementById("currencySymbol");
+        const currencyHint = document.getElementById("currencyHint");
+        const conversionBox = document.getElementById("conversionBox");
+        const ratePrefix = document.getElementById("ratePrefix");
+        const rateHint = document.getElementById("rateHint");
+        const receivedLine = document.getElementById("receivedLine");
+        let rateEdited = false;
+
+        rateInput.addEventListener("input", function () { rateEdited = true; });
+
+        function refresh() {
+            const from = ACCOUNT_CURRENCIES[fromSelect.value];
+            const to = ACCOUNT_CURRENCIES[toSelect.value];
+            if (!from || !to) { return; }
+
+            currencySymbol.textContent = from.symbol;
+            currencyHint.textContent = "Taken from " + fromSelect.value + " in " + from.code + ".";
+
+            if (from.code === to.code) {
+                conversionBox.style.display = "none";
+                rateInput.value = "";
+                return;
+            }
+
+            conversionBox.style.display = "block";
+            ratePrefix.textContent = "1 " + from.code + " =";
+
+            const stored = RATES[from.code + ">" + to.code];
+            if (!rateEdited) {
+                rateInput.value = stored ? stored : "";
+            }
+
+            if (stored) {
+                rateHint.textContent = "Saved rate: 1 " + from.code + " = " + stored + " " + to.code +
+                    ". Override it here for this transfer only.";
+            } else {
+                rateHint.innerHTML = "No saved " + from.code + " to " + to.code +
+                    " rate. Type one here, or add it under <a href='/exchange'>Exchange Rates</a>.";
+            }
+
+            const amount = parseFloat(amountInput.value);
+            const rate = parseFloat(rateInput.value);
+            if (!isNaN(amount) && !isNaN(rate)) {
+                receivedLine.textContent = toSelect.value + " receives " + to.symbol +
+                    (amount * rate).toFixed(2) + " " + to.code;
+            } else {
+                receivedLine.textContent = "";
+            }
+        }
+
+        [fromSelect, toSelect, amountInput, rateInput].forEach(function (element) {
+            element.addEventListener("input", refresh);
+            element.addEventListener("change", refresh);
+        });
+        refresh();
+    </script>
 </body>
 </html>

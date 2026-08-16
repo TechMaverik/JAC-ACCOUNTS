@@ -1,0 +1,80 @@
+<div class="sidebar">
+    <a class="brand" href="/">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="JAC Accounts">
+    </a>
+    <div class="menu">
+        <a href="/" style="color:#c2f262;">Balance
+            <span style="font-size:15px;">{{ total_balance | money(display_currency) }}</span>
+        </a>
+        <a href="/account">New Bank Account</a>
+        <a href="/transaction/expense">Add transactions</a>
+        <a href="/debt">Debts</a>
+        <a href="/expenses">All Expenses History</a>
+        <a href="/incomes">All Income Sources</a>
+        <a href="/transfers">All Transfer History</a>
+        <a href="/exchange">Exchange Rates</a>
+        <a href="/settings">Settings</a>
+    </div>
+
+    <form class="currency-switch" method="POST" action="/settings/display-currency">
+        <label for="displayCurrency">Show totals in</label>
+        <select id="displayCurrency" name="display_currency" onchange="this.form.submit()">
+            {% for code, currency in currencies.CURRENCIES.items() %}
+                <option value="{{ code }}" {% if code == display_currency %}selected{% endif %}>
+                    {{ currency.symbol }} {{ code }} — {{ currency.name }}
+                </option>
+            {% endfor %}
+        </select>
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <noscript><button type="submit">Apply</button></noscript>
+    </form>
+
+    {% if totals_by_currency %}
+    <div class="currency-totals">
+        {% for code, amount in totals_by_currency.items() %}
+        <div class="currency-total">
+            <span class="code">In {{ code }} accounts</span>
+            <span>{{ amount | money(code) }}</span>
+        </div>
+        {% if code != display_currency %}
+        <div class="currency-total converted">
+            <span class="code">→ in {{ display_currency }}</span>
+            <span>
+                {% if rates.get(code ~ '>' ~ display_currency) %}
+                    {{ (amount * rates[code ~ '>' ~ display_currency]) | money(display_currency) }}
+                {% else %}
+                    <a href="/exchange">rate needed</a>
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
+        {% endfor %}
+        <div class="currency-total grand">
+            <span>Total in {{ display_currency }}</span>
+            <span>{{ total_balance | money(display_currency) }}</span>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if missing_rates %}
+    <div class="rate-warning">
+        No {{ missing_rates | join(', ') }} → {{ display_currency }} rate yet, so those
+        balances are left out of the total.
+        <a href="/exchange">Add an exchange rate</a>.
+    </div>
+    {% endif %}
+
+    <div class="accounts">
+        {% for account in accounts %}
+        <div class="account">
+            <span>
+                <span class="account-icon">&#128179;</span> {{ account.name }}
+                <span class="account-currency">{{ account.currency }}</span>
+            </span>
+            <span class="account-balance">{{ account.balance | money(account.currency) }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="credit">Developed by TechMaverik</div>
+</div>

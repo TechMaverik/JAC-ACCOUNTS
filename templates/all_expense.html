@@ -3,146 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <title>JAC Accounts - All transactions</title>
-<style>
-    body { background: #18181b; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
-    .sidebar {
-        width: 270px; background: #22223a; height: 100vh; float: left; padding: 10px 0 0 0; box-sizing: border-box;
-        position: fixed; left: 0; top: 0; bottom: 0;
-    }
-    .sidebar .title { margin-left: 30px; font-size: 26px; font-weight: bold;}
-    .sidebar .menu { margin-top: 18px; }
-    .sidebar .menu a { display: block; color: #bbb; text-decoration: none; font-size: 17px; padding: 7px 30px;}
-    .sidebar .balance { margin: 30px 30px 10px 30px; font-size: 19px; color: #c2f262; }
-    .sidebar .accounts { margin: 12px 13px 0px 13px; }
-    .sidebar .account { display: flex; align-items: center; justify-content: space-between; background: #2f304a; border-radius: 9px; padding: 7px 10px; margin-bottom: 7px;}
-    .sidebar .account-icon { width: 22px; height: 22px; background:#bb61fa; border-radius: 4px; display:inline-flex; align-items:center; justify-content:center; margin-right:7px;}
-    .sidebar .account-balance { font-size: 15px; color: #f0f0f0;}
-    .content { margin-left: 290px; padding: 0;}
-    .content .header { display: flex; padding: 16px 20px; background: #232326; align-items: center;}
-    .content .title { font-size: 22px; font-weight: bold; color: #fff; }
-    .trans-list { margin: 0 28px; margin-top: 16px;}
-    .section-date { font-size: 14px; color: #aac; margin: 24px 0 6px 0;}
-    .trans { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #24243a;}
-    .trans .left { display: flex; align-items: center; justify-content: space-between; }
-    .trans .mid { display: flex; align-items: center; justify-content: space-between; margin-right: 120px;}
-    .trans .icon { width: 34px; height: 34px; border-radius: 11px; background: #39395a; display: flex; align-items:center; justify-content:center; font-size: 21px; margin-right: 17px;}
-    .trans .desc { font-size: 16px; color: #fff;}
-    .trans .amt { color: #ab3d3d; font-weight: bold; font-size: 15px;}
-    .trans .inc { color: #0bdd3cbc; font-weight: bold; font-size: 15px;}
-    .trans .tx { color: #dd0bbebc; font-weight: bold; font-size: 15px;}
-    .add-bar { position: fixed; bottom: 12px; left: 0; width: 100vw; display: flex; justify-content: flex-end; margin-left: 280px;}
-    .add-btn { background: #1781ff; color: #fff; padding: 10px 28px; margin-right: 24px; border-radius: 28px; font-size:16px; border: none;}
-
-    .trans-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: Arial, sans-serif;
-    margin-top: 1em;
-}
-
-.trans-table thead {
-    background-color: #4a90e2;
-    color: white;
-}
-
-.trans-table th, .trans-table td {
-    padding: 10px 15px;
-    border: 1px solid #ddd;
-    text-align: left;
-}
-
-.trans-table tbody tr:nth-child(even) {
-    background-color: #000000;
-}
-
-.trans-table tbody tr:hover {
-    background-color: #686b6d;
-}
-
-.trans-table .amt {
-    color: #d9534f; /* red for expenses */
-    font-weight: bold;
-}
-
-.trans-table .inc {
-    color: #5cb85c; /* green for income */
-    font-weight: bold;
-}
-
-.trans-table .tx {
-    color: #f0ad4e; /* orange for transfers */
-    font-weight: bold;
-}
-    
-
-
-</style>
+{% include "_styles.html" %}
 </head>
 <body>
-<div class="sidebar">
-    <div class="title">JAC Accounts</div>
-    <div class="menu">
-        <!-- <a href="#">Export Data</a>
-        <a href="#">Analytics</a> -->
-        
-        <a href="/" style="color:#c2f262;">Balance <span style="font-size:15px;">₹{{ total_balance }}</span></a>
-        <a href="/account">New Bank Account</a>
-        <a href="/transaction/expense">Add transactions</a>    
-        <a href="/liability">Liabilities</a>  
-        <a href="/expenses">All Expenses History</a> 
-        <a href="/incomes">All Income Sources</a>
-        <a href="/transfers">All Transfer History</a>
-        <a href="/settings">Settings</a>
-        
-    </div>
-    
-    <div class="accounts">
-        <!-- {% for account in bank_name %}
-        <div class="account"><span><span class="account-icon">&#128179;</span> {{ account }} </span> <span class="account-balance">₹{{ account[2] }}</span></div>
-        {% endfor %} -->
-
-        {% for account_name, balance in account_details.items() %}
-    <div class="account">
-        <span><span class="account-icon">&#128179;</span> {{ account_name }} </span> 
-        <span class="account-balance">₹{{ "%.2f"|format(balance) }}</span>
-    </div>
-{% endfor %}
-<div class="accounts">Developed by TechMaverik</div>
-
-        
-    </div>
-</div>
+{% include "_sidebar.html" %}
 <div class="content">
     <div class="header">
-    <div class="title">All Expenses</div>
-</div>
+        <div class="title">All Expenses</div>
+    </div>
 
 <table class="trans-table">
     <thead>
         <tr>
             <th>Date</th>
             <th>Category</th>
-            <th>Description</th>
+            <th>Account</th>
             <th>Amount</th>
+            <th>In {{ display_currency }}</th>
         </tr>
-        
     </thead>
     <tbody>
         {% for item in expensesitems|reverse %}
         <tr>
-            <td>{{ item[4] }}</td>
-            <td>{{ item[3] }}</td>
-            <td>{{ item[2] }}</td>
-            <td class="amt">-₹{{ item[1] }}</td>
+            <td>{{ item.date }}</td>
+            <td>{{ item.category }}</td>
+            <td>{{ item.account }} <span class="currency-code">{{ item.currency }}</span></td>
+            <td class="amt">-{{ item.amount | money(item.currency) }}</td>
+            <td class="amt">
+                {% if item.currency == display_currency %}
+                    -{{ item.amount | money(display_currency) }}
+                {% elif rates.get(item.currency ~ '>' ~ display_currency) %}
+                    -{{ (item.amount | float * rates[item.currency ~ '>' ~ display_currency]) | money(display_currency) }}
+                {% else %}
+                    <a href="/exchange">rate needed</a>
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
-
     </tbody>
 </table>
 </div>
-
-
-<!-- <div class="add-bar"><button class="add-btn">+ Add transaction</button></div> -->
 
 </body>
 </html>
