@@ -54,6 +54,65 @@
     .viz-table th, .viz-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--viz-grid); color: var(--viz-ink-secondary); }
     .viz-table th { color: var(--viz-ink-muted); font-weight: 600; }
     .viz-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Babayo chat window */
+    .babayo-launcher {
+        position: fixed; right: 24px; bottom: 24px; z-index: 50;
+        display: flex; align-items: center; gap: 10px;
+        background: #1781ff; color: #fff; border: none; border-radius: 28px;
+        padding: 12px 20px 12px 14px; font-size: 15px; font-weight: 600;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.45); cursor: pointer;
+    }
+    .babayo-launcher:hover { background: #2b8dff; }
+    .babayo-launcher .avatar { width: 28px; height: 28px; border-radius: 50%; background: #fff; color: #1781ff;
+        display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
+    .babayo-panel {
+        position: fixed; right: 24px; bottom: 24px; z-index: 60;
+        width: min(380px, calc(100vw - 32px)); height: min(560px, calc(100vh - 48px));
+        display: flex; flex-direction: column; background: #22223a; color: #fff;
+        border: 1px solid #3d3e60; border-radius: 16px; overflow: hidden;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.55);
+    }
+    .babayo-panel[hidden] { display: none; }
+    .babayo-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #2f304a; border-bottom: 1px solid #3d3e60; }
+    .babayo-head .avatar { width: 34px; height: 34px; border-radius: 50%; background: #1781ff; color: #fff;
+        display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex: none; }
+    .babayo-head .who { flex: 1; min-width: 0; }
+    .babayo-head .name { font-size: 16px; font-weight: 600; line-height: 1.2; }
+    .babayo-head .status { font-size: 12px; color: #9c9cc4; display: flex; align-items: center; gap: 6px; }
+    .babayo-head .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #0bdd3c; }
+    .babayo-head button { background: transparent; border: none; color: #c9c9de; font-size: 13px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+    .babayo-head button:hover { background: #3d3e60; color: #fff; }
+    .babayo-log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .babayo-msg { max-width: 88%; padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; }
+    .babayo-msg.bot { align-self: flex-start; background: #2f304a; border-bottom-left-radius: 4px; }
+    .babayo-msg.user { align-self: flex-end; background: #1781ff; color: #fff; border-bottom-right-radius: 4px; }
+    .babayo-msg.error { background: #40331f; color: #ffc978; }
+    .babayo-msg ul { margin: 4px 0 4px 18px; padding: 0; }
+    .babayo-msg li { margin: 2px 0; }
+    .babayo-msg strong { color: #c2f262; font-weight: 600; }
+    .babayo-msg.user strong { color: #fff; }
+    .babayo-msg code { background: #12121f; padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+    .babayo-typing { align-self: flex-start; display: flex; gap: 5px; padding: 12px 14px; background: #2f304a; border-radius: 14px; border-bottom-left-radius: 4px; }
+    .babayo-typing span { width: 7px; height: 7px; border-radius: 50%; background: #9c9cc4; animation: babayo-bounce 1.2s infinite ease-in-out; }
+    .babayo-typing span:nth-child(2) { animation-delay: 0.15s; }
+    .babayo-typing span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes babayo-bounce { 0%, 80%, 100% { transform: translateY(0); opacity: 0.5; } 40% { transform: translateY(-5px); opacity: 1; } }
+    .babayo-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px 14px; }
+    .babayo-chips button { background: transparent; border: 1px solid #3d3e60; color: #c9c9de; border-radius: 14px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+    .babayo-chips button:hover { border-color: #1781ff; color: #fff; }
+    .babayo-form { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #3d3e60; background: #1c1c30; }
+    .babayo-form textarea {
+        flex: 1; resize: none; min-height: 40px; max-height: 120px; background: #2f304a; color: #fff;
+        border: 1px solid #3d3e60; border-radius: 10px; padding: 9px 11px; font-size: 14px; font-family: inherit;
+    }
+    .babayo-form textarea:focus { outline: none; border-color: #1781ff; }
+    .babayo-form button { background: #1781ff; color: #fff; border: none; border-radius: 10px; padding: 0 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .babayo-form button:disabled { background: #3d3e60; color: #9c9cc4; cursor: default; }
+    @media (max-width: 600px) {
+        .babayo-panel { right: 8px; bottom: 8px; width: calc(100vw - 16px); height: calc(100vh - 16px); border-radius: 12px; }
+        .babayo-launcher { right: 16px; bottom: 16px; }
+    }
 </style>
 </head>
 <body>
@@ -653,6 +712,221 @@
     window.addEventListener("resize", function () { hideTooltip(); });
 
     render();
+})();
+</script>
+
+<!-- Babayo chat window -->
+<button class="babayo-launcher" id="babayoLauncher" type="button" aria-controls="babayoPanel" aria-expanded="false">
+    <span class="avatar" aria-hidden="true">B</span> Ask Babayo
+</button>
+
+<section class="babayo-panel" id="babayoPanel" hidden role="dialog" aria-label="Chat with Babayo">
+    <div class="babayo-head">
+        <span class="avatar" aria-hidden="true">B</span>
+        <div class="who">
+            <div class="name">Babayo</div>
+            <div class="status">Your JAC Accounts assistant</div>
+        </div>
+        <button type="button" id="babayoReset" title="Start a new conversation">New chat</button>
+        <button type="button" id="babayoClose" aria-label="Close chat">&#10005;</button>
+    </div>
+
+    <div class="babayo-log" id="babayoLog" aria-live="polite"></div>
+
+    <div class="babayo-chips" id="babayoChips">
+        <button type="button" data-question="report">Full report</button>
+        <button type="button" data-question="What are my top expense categories this month?">Top expenses</button>
+        <button type="button" data-question="What is my savings rate?">Savings rate</button>
+        <button type="button" data-question="Forecast my expenses for the next 3 months.">Forecast</button>
+    </div>
+
+    <form class="babayo-form" id="babayoForm" autocomplete="off">
+        <textarea id="babayoInput" rows="1" placeholder="Ask about your money..." aria-label="Your question"></textarea>
+        <button type="submit" id="babayoSend">Send</button>
+    </form>
+</section>
+
+<script>
+(function () {
+    var launcher = document.getElementById("babayoLauncher");
+    var panel = document.getElementById("babayoPanel");
+    var closeBtn = document.getElementById("babayoClose");
+    var resetBtn = document.getElementById("babayoReset");
+    var log = document.getElementById("babayoLog");
+    var chips = document.getElementById("babayoChips");
+    var form = document.getElementById("babayoForm");
+    var input = document.getElementById("babayoInput");
+    var send = document.getElementById("babayoSend");
+    var busy = false;
+
+    var GREETING = "Hi, I'm Babayo. Ask me about your balances, spending, income, debts, " +
+                   "or ask for a forecast. Type \"report\" for a full financial health check.";
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function inline(text) {
+        // Escaped first, so the only HTML here is what we add ourselves.
+        return escapeHtml(text)
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+            .replace(/`([^`]+)`/g, "<code>$1</code>");
+    }
+
+    // Babayo answers in light markdown: headings, bullets, bold. Turn the
+    // parts a chat bubble can show into safe HTML and keep the rest as text.
+    function renderAnswer(text) {
+        var lines = String(text).replace(/\r/g, "").split("\n");
+        var html = "";
+        var inList = false;
+        lines.forEach(function (raw) {
+            var line = raw.replace(/\s+$/, "");
+            var bullet = line.match(/^\s*(?:[-*\u2022]|\d+[.)])\s+(.*)$/);
+            if (bullet) {
+                if (!inList) { html += "<ul>"; inList = true; }
+                html += "<li>" + inline(bullet[1]) + "</li>";
+                return;
+            }
+            if (inList) { html += "</ul>"; inList = false; }
+            var heading = line.match(/^\s*#{1,6}\s+(.*)$/) || line.match(/^\s*(?:\*\*)?([A-Z][A-Za-z ]{2,40}):?(?:\*\*)?:?\s*$/);
+            if (heading) {
+                html += "<strong>" + escapeHtml(heading[1]) + "</strong>\n";
+                return;
+            }
+            html += (line.trim() === "" ? "" : inline(line)) + "\n";
+        });
+        if (inList) { html += "</ul>"; }
+        return html.replace(/\n{3,}/g, "\n\n").replace(/\n+$/, "");
+    }
+
+    function addMessage(text, who, isError) {
+        var node = document.createElement("div");
+        node.className = "babayo-msg " + who + (isError ? " error" : "");
+        if (who === "bot") {
+            node.innerHTML = renderAnswer(text);
+        } else {
+            node.textContent = text;
+        }
+        log.appendChild(node);
+        log.scrollTop = log.scrollHeight;
+        return node;
+    }
+
+    function showTyping() {
+        var node = document.createElement("div");
+        node.className = "babayo-typing";
+        node.setAttribute("aria-label", "Babayo is thinking");
+        node.innerHTML = "<span></span><span></span><span></span>";
+        log.appendChild(node);
+        log.scrollTop = log.scrollHeight;
+        return node;
+    }
+
+    function setBusy(state) {
+        busy = state;
+        send.disabled = state;
+        input.disabled = state;
+        chips.querySelectorAll("button").forEach(function (b) { b.disabled = state; });
+    }
+
+    function ask(question) {
+        question = String(question || "").trim();
+        if (!question || busy) { return; }
+        addMessage(question, "user");
+        input.value = "";
+        autosize();
+        setBusy(true);
+        var typing = showTyping();
+
+        fetch("/babayo/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify({ question: question })
+        }).then(function (response) {
+            return response.json().then(function (data) {
+                if (!response.ok) { throw new Error(data.error || "Babayo could not answer."); }
+                return data;
+            });
+        }).then(function (data) {
+            typing.remove();
+            addMessage(data.answer || "Babayo had nothing to say.", "bot");
+        }).catch(function (error) {
+            typing.remove();
+            addMessage("Sorry, something went wrong: " + error.message, "bot", true);
+        }).finally(function () {
+            setBusy(false);
+            input.focus();
+        });
+    }
+
+    function open() {
+        panel.hidden = false;
+        launcher.hidden = true;
+        launcher.setAttribute("aria-expanded", "true");
+        if (!log.children.length) { addMessage(GREETING, "bot"); }
+        try { localStorage.setItem("babayoOpen", "1"); } catch (e) {}
+        input.focus();
+    }
+
+    function close() {
+        panel.hidden = true;
+        launcher.hidden = false;
+        launcher.setAttribute("aria-expanded", "false");
+        try { localStorage.setItem("babayoOpen", "0"); } catch (e) {}
+        launcher.focus();
+    }
+
+    function autosize() {
+        input.style.height = "auto";
+        input.style.height = Math.min(input.scrollHeight, 120) + "px";
+    }
+
+    launcher.addEventListener("click", open);
+    closeBtn.addEventListener("click", close);
+
+    resetBtn.addEventListener("click", function () {
+        if (busy) { return; }
+        setBusy(true);
+        fetch("/babayo/reset", { method: "POST", headers: { "Accept": "application/json" } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                log.textContent = "";
+                addMessage(data.answer || GREETING, "bot");
+            })
+            .catch(function () {
+                log.textContent = "";
+                addMessage(GREETING, "bot");
+            })
+            .finally(function () { setBusy(false); input.focus(); });
+    });
+
+    chips.addEventListener("click", function (event) {
+        var button = event.target.closest("button[data-question]");
+        if (button) { ask(button.getAttribute("data-question")); }
+    });
+
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        ask(input.value);
+    });
+
+    input.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            ask(input.value);
+        }
+    });
+    input.addEventListener("input", autosize);
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && !panel.hidden) { close(); }
+    });
+
+    var wasOpen = false;
+    try { wasOpen = localStorage.getItem("babayoOpen") === "1"; } catch (e) {}
+    if (wasOpen) { open(); }
 })();
 </script>
 </body>

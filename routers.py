@@ -1,6 +1,6 @@
 from datetime import date as date_module
 
-from flask import Flask, redirect, render_template, request
+from flask import Flask, jsonify, redirect, render_template, request
 
 from handlers import Handlers
 from menus import categories, currencies
@@ -284,6 +284,20 @@ def settings_delete():
         display_currency=handlers.fetch_display_currency(),
         rates=handlers.fetch_rate_lookup_table(),
     )
+
+
+@app.route("/babayo/ask", methods=["POST"])
+def babayo_ask():
+    """Chat endpoint for Babayo, the dashboard chatbot. Expects JSON {"question": ...}."""
+    handlers = Handlers()
+    response = handlers.handle_babayo_question()
+    return jsonify(response), (400 if "error" in response else 200)
+
+
+@app.route("/babayo/reset", methods=["POST"])
+def babayo_reset():
+    handlers = Handlers()
+    return jsonify(handlers.handle_babayo_reset())
 
 
 if __name__ == "__main__":

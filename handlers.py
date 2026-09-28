@@ -118,3 +118,11 @@ class Handlers:
     def fetch_all_transaction_items(self):
         expenses, income, transfer = self.service.select_all__transaction_items()
         return expenses, income, transfer
+
+    def handle_babayo_question(self):
+        payload = request.get_json(silent=True) or {}
+        question = payload.get("question") or request.form.get("question")
+        return self.service.process_babayo_question(question)
+
+    def handle_babayo_reset(self):
+        return self.service.reset_babayo()

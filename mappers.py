@@ -233,3 +233,48 @@ class Mapper:
         with self._cursor(commit=True) as cursor:
             cursor.execute(query_collection.UPSERT_SETTING, (key, value))
         return True
+
+    # ------------------------------------------------------------------
+    # Read-only access for Babayo, the dashboard chatbot
+    # ------------------------------------------------------------------
+
+    @contextmanager
+    def _readonly_cursor(self):
+        # mode=ro means the chatbot physically cannot modify the data.
+        conn = sqlite3.connect(f"file:{query_collection.DB_LOC}?mode=ro", uri=True)
+        try:
+            yield conn.cursor()
+        finally:
+            conn.close()
+
+    def select_table_names(self):
+        with self._readonly_cursor() as cursor:
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') "
+                "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+            )
+            return [row[0] for row in cursor.fetchall()]
+
+    def describe_table(self, table, sample_rows=5):
+        """Columns, row count and a few sample rows of one table."""
+        with self._readonly_cursor() as cursor:
+            cursor.execute(f'PRAGMA table_info("{table}")')
+            columns = [{"name": row[1], "type": row[2]} for row in cursor.fetchall()]
+            cursor.execute(f'SELECT COUNT(*) FROM "{table}"')
+            count = cursor.fetchone()[0]
+            cursor.execute(f'SELECT * FROM "{table}" LIMIT ?', (sample_rows,))
+            names = [d[0] for d in cursor.description]
+            sample = [dict(zip(names, row)) for row in cursor.fetchall()]
+        return {"columns": columns, "row_count": count, "sample_rows": sample}
+
+    def run_readonly_query(self, query, max_rows, params=()):
+        """Run a SELECT and return (columns, rows, truncated).
+
+        Raises sqlite3.Error for the caller to turn into a message.
+        """
+        with self._readonly_cursor() as cursor:
+            cursor.execute(query, tuple(params))
+            rows = cursor.fetchmany(max_rows + 1)
+            columns = [d[0] for d in cursor.description]
+        truncated = len(rows) > max_rows
+        return columns, [list(row) for row in rows[:max_rows]], truncated

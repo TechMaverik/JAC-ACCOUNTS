@@ -1,4 +1,5 @@
 from menus import currencies
+from babayo import get_babayo
 from mappers import Mapper
 
 DISPLAY_CURRENCY_KEY = "display_currency"
@@ -510,3 +511,21 @@ class Service:
             "Balance": round(income_total - expense_total, 2),
             "Currency": trend["currency"],
         }
+
+    # ------------------------------------------------------------------
+    # Babayo, the dashboard chatbot
+    # ------------------------------------------------------------------
+
+    def process_babayo_question(self, question):
+        """Answer one chat question. Babayo reads the database through the mapper."""
+        question = (question or "").strip()
+        if not question:
+            return {"error": "Type a question first."}
+        bot = get_babayo()
+        return {"name": bot.name, "answer": bot.ask(question)}
+
+    def reset_babayo(self):
+        """Forget the conversation so far."""
+        bot = get_babayo()
+        bot.reset()
+        return {"name": bot.name, "answer": "Fresh start. What would you like to know?"}
