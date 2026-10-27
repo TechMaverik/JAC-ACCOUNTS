@@ -4,13 +4,14 @@
         width: 270px; background: #22223a; height: 100vh; float: left; padding: 10px 0 0 0; box-sizing: border-box;
         position: fixed; left: 0; top: 0; bottom: 0; overflow-y: auto;
     }
-    /* Brand plate. The logo artwork is dark on a light ground, so it keeps its
-       own background and sits on the sidebar as a rounded panel. */
-    .sidebar .brand { display: block; margin: 4px 16px 2px 16px; }
-    .sidebar .brand img {
-        display: block; width: 100%; max-width: 208px; height: auto;
-        margin: 0 auto; border-radius: 10px;
+    /* Brand: the logo is a transparent mark, so it sits straight on the
+       sidebar with the app name beside it. */
+    .sidebar .brand {
+        display: flex; align-items: center; gap: 12px;
+        margin: 8px 20px 4px 20px; text-decoration: none;
     }
+    .sidebar .brand img { display: block; width: 56px; height: auto; flex-shrink: 0; }
+    .sidebar .brand-name { font-size: 21px; font-weight: 700; color: #fff; letter-spacing: 0.3px; line-height: 1.15; }
     .sidebar .menu { margin-top: 14px; }
     .sidebar .menu a { display: block; color: #bbb; text-decoration: none; font-size: 17px; padding: 7px 30px;}
     .sidebar .balance { margin: 30px 30px 10px 30px; font-size: 19px; color: #c2f262; }

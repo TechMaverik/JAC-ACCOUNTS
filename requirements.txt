@@ -1,5 +1,7 @@
 flask
 requests
+pymongo
+python-dotenv
 pandas
 matplotlib
 numpy

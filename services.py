@@ -9,11 +9,11 @@ class Service:
 
     def __init__(self):
         self.mapper = Mapper()
-        self.mapper.create_tables()
+        self.mapper.ensure_schema()
         self._rate_cache = None
 
-    def create_tables(self):
-        self.mapper.create_tables()
+    def ensure_schema(self):
+        self.mapper.ensure_schema()
 
     # ------------------------------------------------------------------
     # Currency configuration

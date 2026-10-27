@@ -1,38 +1,35 @@
-import sqlite3
-import pandas as pd
+"""Export every JAC Accounts collection from MongoDB to one CSV file each.
+
+Run from the project root so the .env settings are found:
+
+    python tools/excel_converter.py
+"""
+
 import os
+import sys
+
+import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from database import mongo  # noqa: E402 - needs the project root on sys.path
 
 
-def sqlite_to_csv(sqlite_file, output_folder="exported_documents"):
-    # Create output folder if it doesn't exist
+def mongo_to_csv(output_folder="exported_documents"):
     os.makedirs(output_folder, exist_ok=True)
+    db = mongo.get_db()
 
-    # Connect to SQLite database
-    conn = sqlite3.connect(sqlite_file)
+    for name in mongo.DATA_COLLECTIONS:
+        documents = list(db[name].find({}, {"_id": 0}).sort("id", 1))
+        columns = list(mongo.FIELDS.get(name, {}))
+        df = pd.DataFrame(documents, columns=columns or None)
 
-    # Get all table names using SQLite metadata (correct approach)
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
-
-    for (table_name,) in tables:
-        # Skip system tables if needed
-        if table_name.startswith("sqlite_"):
-            continue
-
-        # Read table into DataFrame
-        df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
-
-        # Build CSV file path
-        csv_path = os.path.join(output_folder, f"{table_name}.csv")
-
-        # Write to CSV
+        csv_path = os.path.join(output_folder, f"{name}.csv")
         df.to_csv(csv_path, index=False)
-        print(f"Written table '{table_name}' to: {csv_path}")
+        print(f"Written collection '{name}' ({len(df)} rows) to: {csv_path}")
 
-    conn.close()
-    print("\nAll tables exported successfully.")
+    print("\nAll collections exported successfully.")
 
 
-# Usage example (fix Windows path separator)
-sqlite_to_csv(r"database\jac_accounts.db")
+if __name__ == "__main__":
+    mongo_to_csv()

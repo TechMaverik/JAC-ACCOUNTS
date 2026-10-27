@@ -8,8 +8,8 @@ class Handlers:
     def __init__(self):
         self.service = Service()
 
-    def create_tables(self):
-        self.service.create_tables()
+    def ensure_schema(self):
+        self.service.ensure_schema()
 
     def handle_debt_entry(self):
         name = request.form.get("name")

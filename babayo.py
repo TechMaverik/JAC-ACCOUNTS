@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Babayo — the JAC Accounts chatbot (Hermes 3 via Ollama + SQLite)
+Babayo — the JAC Accounts chatbot (Hermes 3 via Ollama + MongoDB)
 
 Adapted from agent.py for the dashboard chat window. Babayo explores the
-database itself (schema discovery -> read-only SQL) and uses a deterministic
-forecasting tool for predictions so numbers are computed, not guessed.
+database itself (schema discovery -> read-only aggregation pipelines) and
+uses a deterministic forecasting tool for predictions so numbers are
+computed, not guessed.
 
 Flow: routers -> handlers -> services -> babayo -> mappers. All database reads
-go through Mapper's read-only cursor, so Babayo can never modify your data.
+go through Mapper.run_readonly_query, which accepts only read-only pipeline
+stages, so Babayo can never modify your data.
 
 The dashboard talks to Babayo through Service.process_babayo_question(); the
 module also runs on its own for a quick terminal chat:
@@ -17,17 +19,19 @@ module also runs on its own for a quick terminal chat:
 """
 
 import argparse
+import functools
 import json
 import os
 import re
-import sqlite3
 import statistics
 import threading
 from datetime import date, timedelta
 
 import ollama
+from pymongo.errors import PyMongoError
 
-from mappers import Mapper
+from database import mongo
+from mappers import AMOUNT, Mapper
 
 BOT_NAME = "Babayo"
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "hermes3")
@@ -36,8 +40,9 @@ MAX_TOOL_ROUNDS = 12  # safety limit on agent loop
 NUM_CTX = 8192  # Ollama defaults to a small context; tool results need room
 MAX_HISTORY = 40  # non-system messages kept between questions
 MAX_RETRY_NUDGES = 2  # times to push the model to fix a failed query
-RESERVED_COLUMNS = {"from", "to"}  # must be double quoted in SQL
 PERIODS = ["all_time", "this_month", "last_month", "this_year", "last_30_days", "last_90_days"]
+
+MONTH = {"$substrCP": ["$date", 0, 7]}  # 'YYYY-MM' out of a 'YYYY-MM-DD' date
 
 
 def period_range(period: str):
@@ -58,6 +63,39 @@ def period_range(period: str):
     return None, None
 
 
+def direct_match(period: str = "all_time") -> dict:
+    """Filter for real income/spending (not transfer legs) within a period."""
+    match = {"source": "direct"}
+    start, end = period_range(period)
+    if start:
+        match["date"] = {"$gte": start, "$lte": end}
+    return match
+
+
+def parse_pipeline(pipeline):
+    """The model may send the pipeline as JSON text instead of a list."""
+    if isinstance(pipeline, str):
+        pipeline = json.loads(pipeline)
+    if pipeline is None:
+        return []
+    if isinstance(pipeline, dict):
+        return [pipeline]
+    return pipeline
+
+
+def _safe(method):
+    """Turn database and validation errors into a result the model can read."""
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return method(self, *args, **kwargs)
+        except (ValueError, PyMongoError) as e:
+            return {"error": str(e)}
+
+    return wrapper
+
+
 # ---------------------------------------------------------------------------
 # Database tools (read-only, via the mapper layer)
 # ---------------------------------------------------------------------------
@@ -67,68 +105,67 @@ class BabayoDB:
     def __init__(self, mapper=None):
         self.mapper = mapper or Mapper()
 
-    def list_tables(self) -> dict:
-        return {"tables": self.mapper.select_table_names()}
+    def list_collections(self) -> dict:
+        return {"collections": self.mapper.select_collection_names()}
 
-    def describe_table(self, table: str) -> dict:
-        tables = self.list_tables()["tables"]
-        if table not in tables:
-            return {"error": f"Unknown table '{table}'. Available tables: {tables}"}
-        info = self.mapper.describe_table(table)
+    def describe_collection(self, collection: str) -> dict:
+        collections = self.list_collections()["collections"]
+        if collection not in collections:
+            return {
+                "error": f"Unknown collection '{collection}'. Available collections: {collections}"
+            }
+        info = self.mapper.describe_collection(collection)
         return {
-            "table": table,
+            "collection": collection,
             "row_count": info["row_count"],
-            "columns": info["columns"],
+            "fields": info["columns"],
             "sample_rows": info["sample_rows"],
         }
 
-    def run_sql(self, query: str) -> dict:
-        q = query.strip().rstrip(";")
-        if not re.match(r"^\s*(SELECT|WITH)\b", q, re.I):
-            return {"error": "Only SELECT/WITH queries are allowed."}
+    def run_query(self, collection: str, pipeline) -> dict:
         try:
-            columns, rows, truncated = self.mapper.run_readonly_query(q, MAX_ROWS, ())
+            columns, rows, truncated = self.mapper.run_readonly_query(
+                collection, parse_pipeline(pipeline), MAX_ROWS
+            )
             return {"columns": columns, "rows": rows, "truncated": truncated}
-        except sqlite3.Error as e:
+        except (ValueError, PyMongoError) as e:
             return {
                 "error": str(e),
-                "available_tables": self.list_tables()["tables"],
-                "hint": "Use only the tables/columns listed in the DATABASE SCHEMA.",
+                "available_collections": self.list_collections()["collections"],
+                "hint": "Send a JSON aggregation pipeline using only the collections "
+                "and fields listed in the DATABASE SCHEMA.",
             }
 
     def schema_line(self) -> str:
-        """One-line table(column, ...) list for tool descriptions."""
+        """One-line collection(field, ...) list for tool descriptions."""
         parts = []
-        for t in self.list_tables()["tables"]:
+        for name in self.list_collections()["collections"]:
             cols = ", ".join(
-                f'"{c["name"]}"' if c["name"] in RESERVED_COLUMNS else c["name"]
-                for c in self.mapper.describe_table(t, sample_rows=0)["columns"]
+                c["name"] for c in self.mapper.describe_collection(name, sample_rows=0)["columns"]
             )
-            parts.append(f"{t}({cols})")
+            parts.append(f"{name}({cols})")
         return "; ".join(parts)
 
     def schema_summary(self) -> str:
         """Compact schema + a couple of sample rows, injected into the system prompt."""
         parts = []
-        for t in self.list_tables()["tables"]:
-            info = self.describe_table(t)
-            cols = ", ".join(
-                f'"{c["name"]}"' if c["name"] in RESERVED_COLUMNS else c["name"]
-                for c in info["columns"]
-            )
-            parts.append(f'{t}({cols})  -- {info["row_count"]} rows')
+        for name in self.list_collections()["collections"]:
+            info = self.describe_collection(name)
+            cols = ", ".join(f'{c["name"]}: {c["type"]}' for c in info["fields"])
+            parts.append(f'{name}({cols})  -- {info["row_count"]} documents')
             for r in info["sample_rows"][:2]:
                 parts.append(f"    e.g. {json.dumps(r, default=str)}")
         return "\n".join(parts)
 
-    # Ready-made questions. Fixed SQL means a small model cannot get these wrong.
+    # Ready-made questions. Fixed pipelines mean a small model cannot get these wrong.
 
-    def _query(self, sql: str, params=()) -> dict:
-        try:
-            columns, rows, truncated = self.mapper.run_readonly_query(sql, MAX_ROWS, params)
-        except sqlite3.Error as e:
-            return {"error": str(e)}
-        result = {"rows": [dict(zip(columns, r)) for r in rows], "truncated": truncated}
+    def _rows(self, collection: str, pipeline: list):
+        columns, rows, truncated = self.mapper.run_readonly_query(collection, pipeline, MAX_ROWS)
+        return [dict(zip(columns, r)) for r in rows], truncated
+
+    @staticmethod
+    def _result(rows: list, truncated: bool = False) -> dict:
+        result = {"rows": rows, "truncated": truncated}
         if not rows:
             result["note"] = (
                 "No data matched. Tell the user there is nothing recorded for this; "
@@ -136,105 +173,183 @@ class BabayoDB:
             )
         return result
 
+    @_safe
     def account_balances(self) -> dict:
-        return self._query(
-            """SELECT b.account_name, b.currency,
-                 ROUND((SELECT COALESCE(SUM(CAST(amount AS REAL)), 0) FROM income WHERE "to" = b.account_name)
-                     - (SELECT COALESCE(SUM(CAST(amount AS REAL)), 0) FROM expense WHERE "from" = b.account_name), 2)
-                 AS balance
-               FROM banker b ORDER BY b.account_name"""
-        )
+        income = self.mapper.select_income_totals()
+        expense = self.mapper.select_expense_totals()
+        rows = [
+            {
+                "account_name": name,
+                "currency": currency,
+                "balance": round(income.get(name, 0.0) - expense.get(name, 0.0), 2),
+            }
+            for _id, name, currency in sorted(
+                self.mapper.select_accounts(), key=lambda row: row[1] or ""
+            )
+        ]
+        return self._result(rows)
 
+    @_safe
     def income_expense_totals(self, period: str = "all_time") -> dict:
-        start, end = period_range(period)
-        where = "source = 'direct'"
-        params = []
-        if start:
-            where += " AND date >= ?"
-            params.append(start)
-        if end:
-            where += " AND date <= ?"
-            params.append(end)
-        result = self._query(
-            f"""SELECT currency,
-                 ROUND(COALESCE(SUM(CASE WHEN kind = 'income' THEN amount END), 0), 2) AS income,
-                 ROUND(COALESCE(SUM(CASE WHEN kind = 'expense' THEN amount END), 0), 2) AS expense,
-                 ROUND(COALESCE(SUM(CASE WHEN kind = 'income' THEN amount ELSE -amount END), 0), 2) AS net
-               FROM (
-                 SELECT 'income' AS kind, currency, CAST(amount AS REAL) AS amount FROM income WHERE {where}
-                 UNION ALL
-                 SELECT 'expense', currency, CAST(amount AS REAL) FROM expense WHERE {where}
-               ) GROUP BY currency ORDER BY currency""",
-            params * 2,
-        )
-        for row in result.get("rows", []):
-            income = row.get("income") or 0
-            row["savings_rate_pct"] = round(row["net"] / income * 100, 1) if income else None
+        pipeline = [
+            {"$match": direct_match(period)},
+            {"$group": {"_id": "$currency", "total": {"$sum": AMOUNT}}},
+        ]
+        income = {r["_id"]: r["total"] for r in self._rows(mongo.INCOME, pipeline)[0]}
+        expense = {r["_id"]: r["total"] for r in self._rows(mongo.EXPENSE, pipeline)[0]}
+
+        rows = []
+        for currency in sorted(set(income) | set(expense), key=str):
+            earned = round(income.get(currency, 0.0), 2)
+            spent = round(expense.get(currency, 0.0), 2)
+            net = round(earned - spent, 2)
+            rows.append(
+                {
+                    "currency": currency,
+                    "income": earned,
+                    "expense": spent,
+                    "net": net,
+                    "savings_rate_pct": round(net / earned * 100, 1) if earned else None,
+                }
+            )
+        result = self._result(rows)
         result["period"] = period or "all_time"
         return result
 
+    @_safe
     def monthly_totals(self, months: int = 12) -> dict:
-        return self._query(
-            """SELECT month, currency,
-                 ROUND(COALESCE(SUM(CASE WHEN kind = 'income' THEN amount END), 0), 2) AS income,
-                 ROUND(COALESCE(SUM(CASE WHEN kind = 'expense' THEN amount END), 0), 2) AS expense
-               FROM (
-                 SELECT 'income' AS kind, strftime('%Y-%m', date) AS month, currency, CAST(amount AS REAL) AS amount
-                 FROM income WHERE source = 'direct'
-                 UNION ALL
-                 SELECT 'expense', strftime('%Y-%m', date), currency, CAST(amount AS REAL)
-                 FROM expense WHERE source = 'direct'
-               ) GROUP BY month, currency
-               ORDER BY month DESC, currency LIMIT ?""",
-            (max(1, int(months or 12)) * 4,),
-        )
+        pipeline = [
+            {"$match": {"source": "direct"}},
+            {
+                "$group": {
+                    "_id": {"month": MONTH, "currency": "$currency"},
+                    "total": {"$sum": AMOUNT},
+                }
+            },
+        ]
+        buckets = {}
+        for kind, collection in (("income", mongo.INCOME), ("expense", mongo.EXPENSE)):
+            for r in self._rows(collection, pipeline)[0]:
+                key = (r["_id"]["month"], r["_id"]["currency"])
+                bucket = buckets.setdefault(
+                    key, {"month": key[0], "currency": key[1], "income": 0.0, "expense": 0.0}
+                )
+                bucket[kind] = round(r["total"], 2)
 
+        rows = list(buckets.values())
+        rows.sort(key=lambda b: str(b["currency"]))
+        rows.sort(key=lambda b: str(b["month"]), reverse=True)  # newest month first
+        limit = max(1, int(months or 12)) * 4
+        return self._result(rows[:limit], truncated=len(rows) > limit)
+
+    @_safe
     def top_categories(self, kind: str = "expense", limit: int = 5, period: str = "all_time") -> dict:
-        table = "income" if str(kind).lower().startswith("inc") else "expense"
-        start, end = period_range(period)
-        where = "source = 'direct'"
-        params = []
-        if start:
-            where += " AND date >= ? AND date <= ?"
-            params += [start, end]
-        params.append(max(1, int(limit or 5)))
-        return self._query(
-            f"""SELECT category, currency, ROUND(SUM(CAST(amount AS REAL)), 2) AS total, COUNT(*) AS transactions
-               FROM {table} WHERE {where}
-               GROUP BY category, currency ORDER BY total DESC LIMIT ?""",
-            params,
+        collection = mongo.INCOME if str(kind).lower().startswith("inc") else mongo.EXPENSE
+        rows, truncated = self._rows(
+            collection,
+            [
+                {"$match": direct_match(period)},
+                {
+                    "$group": {
+                        "_id": {"category": "$category", "currency": "$currency"},
+                        "total": {"$sum": AMOUNT},
+                        "transactions": {"$sum": 1},
+                    }
+                },
+                {"$sort": {"total": -1}},
+                {"$limit": max(1, int(limit or 5))},
+                {
+                    "$project": {
+                        "_id": 0,
+                        "category": "$_id.category",
+                        "currency": "$_id.currency",
+                        "total": {"$round": ["$total", 2]},
+                        "transactions": 1,
+                    }
+                },
+            ],
         )
+        return self._result(rows, truncated)
 
+    @_safe
     def largest_transactions(self, kind: str = "expense", limit: int = 5) -> dict:
-        table = "income" if str(kind).lower().startswith("inc") else "expense"
-        account = '"to"' if table == "income" else '"from"'
-        return self._query(
-            f"""SELECT date, category, {account} AS account, currency,
-                 ROUND(CAST(amount AS REAL), 2) AS amount
-               FROM {table} WHERE source = 'direct'
-               ORDER BY CAST(amount AS REAL) DESC LIMIT ?""",
-            (max(1, int(limit or 5)),),
+        collection = mongo.INCOME if str(kind).lower().startswith("inc") else mongo.EXPENSE
+        account = "$to" if collection == mongo.INCOME else "$from"
+        rows, truncated = self._rows(
+            collection,
+            [
+                {"$match": {"source": "direct"}},
+                {"$addFields": {"_amount": AMOUNT}},
+                {"$sort": {"_amount": -1}},
+                {"$limit": max(1, int(limit or 5))},
+                {
+                    "$project": {
+                        "_id": 0,
+                        "date": 1,
+                        "category": 1,
+                        "account": account,
+                        "currency": 1,
+                        "amount": {"$round": ["$_amount", 2]},
+                    }
+                },
+            ],
         )
+        return self._result(rows, truncated)
 
+    @_safe
     def debt_overview(self) -> dict:
-        return self._query(
-            """SELECT d.name, d.description, d.currency,
-                 ROUND(CAST(d.amount AS REAL), 2) AS borrowed,
-                 ROUND(COALESCE((SELECT SUM(CAST(amount AS REAL)) FROM debt_payment WHERE debt_id = d.id), 0), 2) AS paid,
-                 ROUND(CAST(d.amount AS REAL)
-                   - COALESCE((SELECT SUM(CAST(amount AS REAL)) FROM debt_payment WHERE debt_id = d.id), 0), 2) AS outstanding
-               FROM debt d ORDER BY outstanding DESC"""
-        )
+        paid_totals = self.mapper.select_debt_paid_totals()
+        rows = []
+        for debt_id, name, amount, description, currency in self.mapper.select_debts():
+            try:
+                borrowed = round(float(amount), 2)
+            except (TypeError, ValueError):
+                borrowed = 0.0
+            paid = round(paid_totals.get(debt_id, 0.0), 2)
+            rows.append(
+                {
+                    "name": name,
+                    "description": description,
+                    "currency": currency,
+                    "borrowed": borrowed,
+                    "paid": paid,
+                    "outstanding": round(borrowed - paid, 2),
+                }
+            )
+        rows.sort(key=lambda r: r["outstanding"], reverse=True)
+        return self._result(rows)
 
-    def forecast(self, query: str, periods_ahead: int = 3) -> dict:
+    def forecast(self, collection: str, pipeline, periods_ahead: int = 3) -> dict:
         """
-        query must return 2 columns ordered by time: (period_label, amount).
-        Fits a linear trend + reports moving average and volatility.
+        pipeline must produce documents with the period as _id (or a 'period'
+        field) and an 'amount' field. Fits a linear trend + reports moving
+        average and volatility.
         """
-        res = self.run_sql(query)
+        res = self.run_query(collection, pipeline)
         if "error" in res:
             return res
-        rows = [(str(r[0]), float(r[1] or 0)) for r in res["rows"]]
+        columns = res["columns"]
+        period_col = "period" if "period" in columns else (columns[0] if columns else None)
+        amount_col = (
+            "amount"
+            if "amount" in columns
+            else next((c for c in columns if c != period_col), None)
+        )
+        if period_col is None or amount_col is None:
+            return {
+                "error": "The pipeline must return documents with a period and an "
+                'amount, e.g. {"_id": "2026-08", "amount": 123.4}.'
+            }
+
+        rows = []
+        for values in res["rows"]:
+            doc = dict(zip(columns, values))
+            try:
+                rows.append((str(doc.get(period_col)), float(doc.get(amount_col) or 0)))
+            except (TypeError, ValueError):
+                return {"error": f"'{amount_col}' must be numeric in every document."}
+        rows.sort(key=lambda r: r[0])  # oldest -> newest, whatever order came back
+
         if len(rows) < 3:
             return {
                 "error": f"Only {len(rows)} period(s) of history; a forecast needs at least 3.",
@@ -304,11 +419,15 @@ KIND = {"type": "string", "enum": ["expense", "income"],
 LIMIT = {"type": "integer", "description": "How many rows to return (default 5)"}
 PERIOD = {"type": "string", "enum": PERIODS,
           "description": "Time window. Use all_time unless the user names a period."}
+COLLECTION = {"type": "string", "description": "Collection to query, e.g. expense"}
+PIPELINE = {"type": "array", "items": {"type": "object"},
+            "description": "MongoDB aggregation stages as JSON objects, e.g. "
+                           '[{"$match": {"source": "direct"}}, {"$group": {...}}]'}
 
 
 def build_tools(schema_line: str) -> list:
-    """Tool schemas for Ollama. The live table list rides along in run_sql's description,
-    which a small model reads more reliably than the system prompt."""
+    """Tool schemas for Ollama. The live collection list rides along in run_query's
+    description, which a small model reads more reliably than the system prompt."""
     return [
         tool("account_balances",
              "Current balance of every bank account in its own currency. Use for questions about "
@@ -330,70 +449,80 @@ def build_tools(schema_line: str) -> list:
              {"kind": KIND, "limit": LIMIT}),
         tool("debt_overview",
              "Every debt with the amount borrowed, amount repaid and what is still outstanding."),
-        tool("list_tables", "List all tables/views in the SQLite database."),
-        tool("describe_table",
-             "Get columns, types, row count and 5 sample rows of a table.",
-             {"table": {"type": "string", "description": "Table name"}}, ["table"]),
-        tool("run_sql",
-             "Run a read-only SQLite SELECT for anything the other tools do not cover. Use ONLY "
-             "these tables and columns: " + schema_line + ". amount is TEXT: use "
-             "CAST(amount AS REAL). Quote \"from\" and \"to\". Real income/spending has "
-             "source = 'direct'. Use strftime('%Y-%m', date) for months. Returns up to 200 rows.",
-             {"query": {"type": "string", "description": "SQLite SELECT query"}}, ["query"]),
+        tool("list_collections", "List all collections in the MongoDB database."),
+        tool("describe_collection",
+             "Get fields, types, document count and 5 sample documents of a collection.",
+             {"collection": {"type": "string", "description": "Collection name"}}, ["collection"]),
+        tool("run_query",
+             "Run a read-only MongoDB aggregation pipeline for anything the other tools do not "
+             "cover. Use ONLY these collections and fields: " + schema_line + ". amount is a "
+             'string: sum it with {"$sum": {"$toDouble": "$amount"}}. Real income/spending has '
+             'source = "direct". Month of a date = {"$substrCP": ["$date", 0, 7]}. '
+             "Returns up to 200 documents.",
+             {"collection": COLLECTION, "pipeline": PIPELINE}, ["collection", "pipeline"]),
         tool("forecast",
-             "Forecast future values from a time series. The query MUST return exactly two "
-             "columns (period, amount) ordered oldest->newest, e.g. "
-             "SELECT strftime('%Y-%m', date) AS m, SUM(CAST(amount AS REAL)) FROM expense "
-             "WHERE source='direct' AND currency='AUD' GROUP BY m ORDER BY m. Returns trend, "
-             "moving average and prediction ranges.",
-             {"query": {"type": "string", "description": "SELECT returning (period, amount)"},
+             "Forecast future values from a time series. The pipeline MUST produce documents "
+             "with the period as _id and an amount field, sorted oldest->newest, e.g. collection "
+             'expense with [{"$match": {"source": "direct", "currency": "AUD"}}, {"$group": '
+             '{"_id": {"$substrCP": ["$date", 0, 7]}, "amount": {"$sum": {"$toDouble": '
+             '"$amount"}}}}, {"$sort": {"_id": 1}}]. Returns trend, moving average and '
+             "prediction ranges.",
+             {"collection": COLLECTION, "pipeline": PIPELINE,
               "periods_ahead": {"type": "integer",
                                 "description": "How many periods to predict (default 3)"}},
-             ["query"]),
+             ["collection", "pipeline"]),
     ]
 
 
-SYSTEM_PROMPT = f"""You are {BOT_NAME}. Always introduce yourself as {BOT_NAME}, the friendly \
+# Plain string, not an f-string: the example pipelines are full of braces.
+SYSTEM_PROMPT = """You are {bot}. Always introduce yourself as {bot}, the friendly \
 personal finance assistant built into the JAC Accounts app. You chat with the user inside a small \
-chat window on their dashboard and you have READ-ONLY access to the app's SQLite database.
+chat window on their dashboard and you have READ-ONLY access to the app's MongoDB database.
 
 DATA GUIDE (this is how the data is organised — rely on it):
 - banker: the user's bank accounts (account_name, currency).
-- income: money coming IN, one row per transaction ("to" = receiving account).
-- expense: money going OUT, one row per transaction ("from" = paying account).
-- transfer: moves between the user's own accounts. Each transfer also writes one income row and \
-one expense row with source = 'transfer'; real income/spending is source = 'direct'.
-- debt: money the user owes; debt_payment: repayments against a debt.
+- income: money coming IN, one document per transaction (to = receiving account).
+- expense: money going OUT, one document per transaction (from = paying account).
+- transfer: moves between the user's own accounts. Each transfer also writes one income document \
+and one expense document with source = "transfer"; real income/spending is source = "direct".
+- debt: money the user owes; debt_payment: repayments against a debt (debt_id = the debt's id).
 - exchange_rate: 1 base_currency = rate quote_currency on a date. app_settings: display currency.
-- There is NO 'transactions' table. Use income and expense.
-- amount is stored as TEXT: always use CAST(amount AS REAL). date is 'YYYY-MM-DD' text.
-- "from" and "to" are reserved words: write them in double quotes.
-- Every row has its own currency. Group by currency; never add different currencies together.
+- There is NO "transactions" collection. Use income and expense.
+- amount is stored as a string: always convert it with {"$toDouble": "$amount"}. date is a \
+"YYYY-MM-DD" string, so the month is {"$substrCP": ["$date", 0, 7]}.
+- Every document has its own currency. Group by currency; never add different currencies together.
 
-EXAMPLE QUERIES (copy the pattern):
-- Income per currency: SELECT currency, SUM(CAST(amount AS REAL)) FROM income WHERE source='direct' GROUP BY currency
-- Expense per currency: SELECT currency, SUM(CAST(amount AS REAL)) FROM expense WHERE source='direct' GROUP BY currency
-- Monthly spending: SELECT strftime('%Y-%m', date) AS month, currency, SUM(CAST(amount AS REAL)) FROM expense WHERE source='direct' GROUP BY month, currency ORDER BY month
-- Top categories: SELECT category, currency, SUM(CAST(amount AS REAL)) AS total FROM expense WHERE source='direct' GROUP BY category, currency ORDER BY total DESC LIMIT 5
-- Account balance: SELECT b.account_name, b.currency, (SELECT COALESCE(SUM(CAST(amount AS REAL)),0) FROM income WHERE "to"=b.account_name) - (SELECT COALESCE(SUM(CAST(amount AS REAL)),0) FROM expense WHERE "from"=b.account_name) AS balance FROM banker b
+EXAMPLE QUERIES for run_query (copy the pattern; collection first, then the pipeline):
+- Income per currency: income, [{"$match": {"source": "direct"}}, {"$group": {"_id": "$currency", \
+"total": {"$sum": {"$toDouble": "$amount"}}}}]
+- Expense per currency: expense, [{"$match": {"source": "direct"}}, {"$group": {"_id": "$currency", \
+"total": {"$sum": {"$toDouble": "$amount"}}}}]
+- Monthly spending: expense, [{"$match": {"source": "direct"}}, {"$group": {"_id": {"month": \
+{"$substrCP": ["$date", 0, 7]}, "currency": "$currency"}, "total": {"$sum": {"$toDouble": \
+"$amount"}}}}, {"$sort": {"_id.month": 1}}]
+- Top categories: expense, [{"$match": {"source": "direct"}}, {"$group": {"_id": {"category": \
+"$category", "currency": "$currency"}, "total": {"$sum": {"$toDouble": "$amount"}}}}, \
+{"$sort": {"total": -1}}, {"$limit": 5}]
+- Spending from one account: expense, [{"$match": {"source": "direct", "from": "Common Wealth"}}, \
+{"$group": {"_id": "$currency", "total": {"$sum": {"$toDouble": "$amount"}}}}]
 
 How to work:
 1. Prefer the ready-made tools: account_balances, income_expense_totals, monthly_totals, \
 top_categories, largest_transactions, debt_overview. They cannot fail.
-2. Use run_sql only for questions those tools cannot answer, with ONLY the tables and columns \
-listed in the DATABASE SCHEMA below. Copy names exactly.
-3. If a query fails, read the error, fix the query using the schema and call run_sql again. \
+2. Use run_query only for questions those tools cannot answer, with ONLY the collections and \
+fields listed in the DATABASE SCHEMA below. Copy names exactly.
+3. If a query fails, read the error, fix the pipeline using the schema and call run_query again. \
 Never tell the user about a failed query and never make up numbers instead.
 4. For ANY prediction, call the forecast tool — never invent forecast numbers yourself.
 5. Only report numbers that came from tool results. If there is no data for a question, say so.
-6. If the user just greets you or chats, reply briefly and warmly as {BOT_NAME} without \
+6. If the user just greets you or chats, reply briefly and warmly as {bot} without \
 running queries.
 
 Answer format: plain text that reads well in a small chat bubble. Keep answers short. Use \
 short bullet lines with figures for insights, written with the currency code (for example \
 1,522.92 AUD or 7,408 INR, never a $ sign for INR), give predictions with their \
 low–high range, and add 1–3 practical recommendations when they are useful. Do not use markdown \
-tables."""
+tables.""".replace("{bot}", BOT_NAME)
 
 REPORT_PROMPT = """Give me a full financial health report: income vs expenses over time, \
 monthly net cash flow, savings rate, top expense categories, any anomalies or unusual \
@@ -428,20 +557,24 @@ class Babayo:
                 a.get("kind") or "expense", a.get("limit") or 5
             ),
             "debt_overview": lambda a: self.db.debt_overview(),
-            "list_tables": lambda a: self.db.list_tables(),
-            "describe_table": lambda a: self.db.describe_table(a.get("table", "")),
-            "run_sql": lambda a: self.db.run_sql(a.get("query", "")),
+            "list_collections": lambda a: self.db.list_collections(),
+            "describe_collection": lambda a: self.db.describe_collection(
+                a.get("collection") or a.get("table", "")
+            ),
+            "run_query": lambda a: self.db.run_query(
+                a.get("collection", ""), a.get("pipeline", [])
+            ),
             "forecast": lambda a: self.db.forecast(
-                a.get("query", ""), int(a.get("periods_ahead", 3))
+                a.get("collection", ""), a.get("pipeline", []), int(a.get("periods_ahead", 3))
             ),
         }
 
     def system_message(self) -> dict:
-        # Rebuilt on every question so the row counts and samples Babayo sees
-        # keep up with transactions added through the app.
+        # Rebuilt on every question so the document counts and samples Babayo
+        # sees keep up with transactions added through the app.
         schema = self.db.schema_summary()
         if not schema:
-            schema = "(the database has no tables yet)"
+            schema = "(the database has no collections yet)"
         today = date.today()
         this_month = today.strftime("%Y-%m")
         last_month = (today.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
@@ -450,7 +583,7 @@ class Babayo:
             "content": SYSTEM_PROMPT
             + f"\n\nTODAY is {today.isoformat()}. 'This month' means {this_month} and "
             f"'last month' means {last_month}. Use period = all_time unless the user names a period."
-            + "\n\nDATABASE SCHEMA (these are the ONLY tables and columns that exist — "
+            + "\n\nDATABASE SCHEMA (these are the ONLY collections and fields that exist — "
             "never guess other names; copy these exactly):\n" + schema,
         }
 
@@ -473,6 +606,11 @@ class Babayo:
                 return (
                     f"{BOT_NAME} could not get an answer from the model '{self.model}': "
                     f"{e.error or e}. Pull it with `ollama pull {self.model}` and try again."
+                )
+            except PyMongoError as e:
+                return (
+                    f"{BOT_NAME} cannot read the database right now "
+                    f"({e.__class__.__name__}: {e}). Check the MongoDB settings in .env."
                 )
             except Exception as e:  # noqa: BLE001 - connection refused, timeouts, ...
                 return (
@@ -514,10 +652,10 @@ class Babayo:
                         "role": "user",
                         "content": (
                             f"Your last query failed: {last_error}. Do not apologise or "
-                            "explain the error. Write a corrected SELECT that uses only "
-                            "the tables and columns in the DATABASE SCHEMA (remember "
-                            "CAST(amount AS REAL) and double quotes around \"from\" and "
-                            "\"to\"), call run_sql, then answer the question."
+                            "explain the error. Write a corrected aggregation pipeline that "
+                            "uses only the collections and fields in the DATABASE SCHEMA "
+                            '(remember {"$toDouble": "$amount"} for amounts), call '
+                            "run_query, then answer the question."
                         ),
                     }
                     messages.append(nudge)
