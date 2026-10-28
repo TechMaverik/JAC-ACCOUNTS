@@ -34,13 +34,20 @@ from database import mongo
 from mappers import AMOUNT, Mapper
 
 BOT_NAME = "Babayo"
-DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "hermes3")
+DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 MAX_ROWS = 200  # cap rows returned to the model
 MAX_TOOL_ROUNDS = 12  # safety limit on agent loop
 NUM_CTX = 8192  # Ollama defaults to a small context; tool results need room
 MAX_HISTORY = 40  # non-system messages kept between questions
 MAX_RETRY_NUDGES = 2  # times to push the model to fix a failed query
-PERIODS = ["all_time", "this_month", "last_month", "this_year", "last_30_days", "last_90_days"]
+PERIODS = [
+    "all_time",
+    "this_month",
+    "last_month",
+    "this_year",
+    "last_30_days",
+    "last_90_days",
+]
 
 MONTH = {"$substrCP": ["$date", 0, 7]}  # 'YYYY-MM' out of a 'YYYY-MM-DD' date
 
@@ -141,7 +148,8 @@ class BabayoDB:
         parts = []
         for name in self.list_collections()["collections"]:
             cols = ", ".join(
-                c["name"] for c in self.mapper.describe_collection(name, sample_rows=0)["columns"]
+                c["name"]
+                for c in self.mapper.describe_collection(name, sample_rows=0)["columns"]
             )
             parts.append(f"{name}({cols})")
         return "; ".join(parts)
@@ -160,7 +168,9 @@ class BabayoDB:
     # Ready-made questions. Fixed pipelines mean a small model cannot get these wrong.
 
     def _rows(self, collection: str, pipeline: list):
-        columns, rows, truncated = self.mapper.run_readonly_query(collection, pipeline, MAX_ROWS)
+        columns, rows, truncated = self.mapper.run_readonly_query(
+            collection, pipeline, MAX_ROWS
+        )
         return [dict(zip(columns, r)) for r in rows], truncated
 
     @staticmethod
@@ -209,7 +219,9 @@ class BabayoDB:
                     "income": earned,
                     "expense": spent,
                     "net": net,
-                    "savings_rate_pct": round(net / earned * 100, 1) if earned else None,
+                    "savings_rate_pct": (
+                        round(net / earned * 100, 1) if earned else None
+                    ),
                 }
             )
         result = self._result(rows)
@@ -232,7 +244,13 @@ class BabayoDB:
             for r in self._rows(collection, pipeline)[0]:
                 key = (r["_id"]["month"], r["_id"]["currency"])
                 bucket = buckets.setdefault(
-                    key, {"month": key[0], "currency": key[1], "income": 0.0, "expense": 0.0}
+                    key,
+                    {
+                        "month": key[0],
+                        "currency": key[1],
+                        "income": 0.0,
+                        "expense": 0.0,
+                    },
                 )
                 bucket[kind] = round(r["total"], 2)
 
@@ -243,8 +261,12 @@ class BabayoDB:
         return self._result(rows[:limit], truncated=len(rows) > limit)
 
     @_safe
-    def top_categories(self, kind: str = "expense", limit: int = 5, period: str = "all_time") -> dict:
-        collection = mongo.INCOME if str(kind).lower().startswith("inc") else mongo.EXPENSE
+    def top_categories(
+        self, kind: str = "expense", limit: int = 5, period: str = "all_time"
+    ) -> dict:
+        collection = (
+            mongo.INCOME if str(kind).lower().startswith("inc") else mongo.EXPENSE
+        )
         rows, truncated = self._rows(
             collection,
             [
@@ -273,7 +295,9 @@ class BabayoDB:
 
     @_safe
     def largest_transactions(self, kind: str = "expense", limit: int = 5) -> dict:
-        collection = mongo.INCOME if str(kind).lower().startswith("inc") else mongo.EXPENSE
+        collection = (
+            mongo.INCOME if str(kind).lower().startswith("inc") else mongo.EXPENSE
+        )
         account = "$to" if collection == mongo.INCOME else "$from"
         rows, truncated = self._rows(
             collection,
@@ -329,7 +353,9 @@ class BabayoDB:
         if "error" in res:
             return res
         columns = res["columns"]
-        period_col = "period" if "period" in columns else (columns[0] if columns else None)
+        period_col = (
+            "period" if "period" in columns else (columns[0] if columns else None)
+        )
         amount_col = (
             "amount"
             if "amount" in columns
@@ -399,6 +425,7 @@ class BabayoDB:
 # Tool schemas for Ollama
 # ---------------------------------------------------------------------------
 
+
 def tool(name, description, properties=None, required=None):
     return {
         "type": "function",
@@ -414,63 +441,104 @@ def tool(name, description, properties=None, required=None):
     }
 
 
-KIND = {"type": "string", "enum": ["expense", "income"],
-        "description": "'expense' for spending or 'income' for money received"}
+KIND = {
+    "type": "string",
+    "enum": ["expense", "income"],
+    "description": "'expense' for spending or 'income' for money received",
+}
 LIMIT = {"type": "integer", "description": "How many rows to return (default 5)"}
-PERIOD = {"type": "string", "enum": PERIODS,
-          "description": "Time window. Use all_time unless the user names a period."}
+PERIOD = {
+    "type": "string",
+    "enum": PERIODS,
+    "description": "Time window. Use all_time unless the user names a period.",
+}
 COLLECTION = {"type": "string", "description": "Collection to query, e.g. expense"}
-PIPELINE = {"type": "array", "items": {"type": "object"},
-            "description": "MongoDB aggregation stages as JSON objects, e.g. "
-                           '[{"$match": {"source": "direct"}}, {"$group": {...}}]'}
+PIPELINE = {
+    "type": "array",
+    "items": {"type": "object"},
+    "description": "MongoDB aggregation stages as JSON objects, e.g. "
+    '[{"$match": {"source": "direct"}}, {"$group": {...}}]',
+}
 
 
 def build_tools(schema_line: str) -> list:
     """Tool schemas for Ollama. The live collection list rides along in run_query's
     description, which a small model reads more reliably than the system prompt."""
     return [
-        tool("account_balances",
-             "Current balance of every bank account in its own currency. Use for questions about "
-             "balances, how much money the user has, or a specific account."),
-        tool("income_expense_totals",
-             "Total income, total expense and net (income - expense) per currency, optionally "
-             "limited to a period, with the savings rate already computed as savings_rate_pct. "
-             "Use for totals, savings rate and cash flow questions.",
-             {"period": PERIOD}),
-        tool("monthly_totals",
-             "Income and expense per month and currency, newest month first. Use for trends, "
-             "month-over-month comparisons and 'this month' / 'last month' questions.",
-             {"months": {"type": "integer", "description": "How many recent months (default 12)"}}),
-        tool("top_categories",
-             "Biggest expense or income categories by total amount, all time or for a period.",
-             {"kind": KIND, "limit": LIMIT, "period": PERIOD}),
-        tool("largest_transactions",
-             "The single largest expense or income transactions with their date, category and account.",
-             {"kind": KIND, "limit": LIMIT}),
-        tool("debt_overview",
-             "Every debt with the amount borrowed, amount repaid and what is still outstanding."),
+        tool(
+            "account_balances",
+            "Current balance of every bank account in its own currency. Use for questions about "
+            "balances, how much money the user has, or a specific account.",
+        ),
+        tool(
+            "income_expense_totals",
+            "Total income, total expense and net (income - expense) per currency, optionally "
+            "limited to a period, with the savings rate already computed as savings_rate_pct. "
+            "Use for totals, savings rate and cash flow questions.",
+            {"period": PERIOD},
+        ),
+        tool(
+            "monthly_totals",
+            "Income and expense per month and currency, newest month first. Use for trends, "
+            "month-over-month comparisons and 'this month' / 'last month' questions.",
+            {
+                "months": {
+                    "type": "integer",
+                    "description": "How many recent months (default 12)",
+                }
+            },
+        ),
+        tool(
+            "top_categories",
+            "Biggest expense or income categories by total amount, all time or for a period.",
+            {"kind": KIND, "limit": LIMIT, "period": PERIOD},
+        ),
+        tool(
+            "largest_transactions",
+            "The single largest expense or income transactions with their date, category and account.",
+            {"kind": KIND, "limit": LIMIT},
+        ),
+        tool(
+            "debt_overview",
+            "Every debt with the amount borrowed, amount repaid and what is still outstanding.",
+        ),
         tool("list_collections", "List all collections in the MongoDB database."),
-        tool("describe_collection",
-             "Get fields, types, document count and 5 sample documents of a collection.",
-             {"collection": {"type": "string", "description": "Collection name"}}, ["collection"]),
-        tool("run_query",
-             "Run a read-only MongoDB aggregation pipeline for anything the other tools do not "
-             "cover. Use ONLY these collections and fields: " + schema_line + ". amount is a "
-             'string: sum it with {"$sum": {"$toDouble": "$amount"}}. Real income/spending has '
-             'source = "direct". Month of a date = {"$substrCP": ["$date", 0, 7]}. '
-             "Returns up to 200 documents.",
-             {"collection": COLLECTION, "pipeline": PIPELINE}, ["collection", "pipeline"]),
-        tool("forecast",
-             "Forecast future values from a time series. The pipeline MUST produce documents "
-             "with the period as _id and an amount field, sorted oldest->newest, e.g. collection "
-             'expense with [{"$match": {"source": "direct", "currency": "AUD"}}, {"$group": '
-             '{"_id": {"$substrCP": ["$date", 0, 7]}, "amount": {"$sum": {"$toDouble": '
-             '"$amount"}}}}, {"$sort": {"_id": 1}}]. Returns trend, moving average and '
-             "prediction ranges.",
-             {"collection": COLLECTION, "pipeline": PIPELINE,
-              "periods_ahead": {"type": "integer",
-                                "description": "How many periods to predict (default 3)"}},
-             ["collection", "pipeline"]),
+        tool(
+            "describe_collection",
+            "Get fields, types, document count and 5 sample documents of a collection.",
+            {"collection": {"type": "string", "description": "Collection name"}},
+            ["collection"],
+        ),
+        tool(
+            "run_query",
+            "Run a read-only MongoDB aggregation pipeline for anything the other tools do not "
+            "cover. Use ONLY these collections and fields: "
+            + schema_line
+            + ". amount is a "
+            'string: sum it with {"$sum": {"$toDouble": "$amount"}}. Real income/spending has '
+            'source = "direct". Month of a date = {"$substrCP": ["$date", 0, 7]}. '
+            "Returns up to 200 documents.",
+            {"collection": COLLECTION, "pipeline": PIPELINE},
+            ["collection", "pipeline"],
+        ),
+        tool(
+            "forecast",
+            "Forecast future values from a time series. The pipeline MUST produce documents "
+            "with the period as _id and an amount field, sorted oldest->newest, e.g. collection "
+            'expense with [{"$match": {"source": "direct", "currency": "AUD"}}, {"$group": '
+            '{"_id": {"$substrCP": ["$date", 0, 7]}, "amount": {"$sum": {"$toDouble": '
+            '"$amount"}}}}, {"$sort": {"_id": 1}}]. Returns trend, moving average and '
+            "prediction ranges.",
+            {
+                "collection": COLLECTION,
+                "pipeline": PIPELINE,
+                "periods_ahead": {
+                    "type": "integer",
+                    "description": "How many periods to predict (default 3)",
+                },
+            },
+            ["collection", "pipeline"],
+        ),
     ]
 
 
@@ -539,7 +607,9 @@ class Babayo:
 
     name = BOT_NAME
 
-    def __init__(self, db: BabayoDB = None, model: str = DEFAULT_MODEL, verbose: bool = False):
+    def __init__(
+        self, db: BabayoDB = None, model: str = DEFAULT_MODEL, verbose: bool = False
+    ):
         self.db = db or BabayoDB()
         self.model, self.verbose = model, verbose
         self.history = []  # user / assistant / tool messages, without the system prompt
@@ -551,7 +621,9 @@ class Babayo:
             ),
             "monthly_totals": lambda a: self.db.monthly_totals(a.get("months") or 12),
             "top_categories": lambda a: self.db.top_categories(
-                a.get("kind") or "expense", a.get("limit") or 5, a.get("period") or "all_time"
+                a.get("kind") or "expense",
+                a.get("limit") or 5,
+                a.get("period") or "all_time",
             ),
             "largest_transactions": lambda a: self.db.largest_transactions(
                 a.get("kind") or "expense", a.get("limit") or 5
@@ -565,7 +637,9 @@ class Babayo:
                 a.get("collection", ""), a.get("pipeline", [])
             ),
             "forecast": lambda a: self.db.forecast(
-                a.get("collection", ""), a.get("pipeline", []), int(a.get("periods_ahead", 3))
+                a.get("collection", ""),
+                a.get("pipeline", []),
+                int(a.get("periods_ahead", 3)),
             ),
         }
 
@@ -631,6 +705,7 @@ class Babayo:
                 model=self.model,
                 messages=messages,
                 tools=tools,
+                think=False,
                 options={"temperature": 0.1, "num_ctx": NUM_CTX},
             )
             msg = resp.message
@@ -662,7 +737,10 @@ class Babayo:
                     self.history.append(nudge)
                     continue
                 answer = clean_output(msg.content or "")
-                return answer or f"{BOT_NAME} had nothing to say. Try rephrasing the question."
+                return (
+                    answer
+                    or f"{BOT_NAME} had nothing to say. Try rephrasing the question."
+                )
 
             last_error = None
             for name, args in calls:
@@ -728,7 +806,9 @@ def get_babayo() -> Babayo:
 
 
 def main():
-    p = argparse.ArgumentParser(description=f"{BOT_NAME} — JAC Accounts chatbot (Hermes 3 via Ollama)")
+    p = argparse.ArgumentParser(
+        description=f"{BOT_NAME} — JAC Accounts chatbot (Hermes 3 via Ollama)"
+    )
     p.add_argument("--model", default=DEFAULT_MODEL)
     p.add_argument(
         "--report", action="store_true", help="Generate one full report and exit"
